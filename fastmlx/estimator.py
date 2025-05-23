@@ -23,12 +23,14 @@ class Estimator:
         self.epochs: int = epochs
         self.traces: List[object] = list(traces or [])
         self.log_interval = log_interval
+        self.global_step: int = 0
+        self.current_epoch: int = 0
 
     def fit(self) -> MutableMapping[str, object]:
         """Train the network with periodic logging similar to FastEstimator."""
 
         state: MutableMapping[str, object] = {}
-        step = 0
+        step = self.global_step
         start_time = time.time()
         print(
             f"FastMLX-Start: step: 1; logging_interval: {self.log_interval}; num_device: 1;"
@@ -38,12 +40,14 @@ class Estimator:
                 t.on_start(state)
         for epoch in range(self.epochs):
             epoch_start = time.time()
+            self.current_epoch = epoch + 1
             state = {"mode": "train", "epoch": epoch, "metrics": {}}
             for t in self.traces:
                 if hasattr(t, "on_epoch_begin"):
                     t.on_epoch_begin(state)
             for batch in self.pipeline.get_loader("train"):
                 step += 1
+                self.global_step += 1
                 batch_start = time.time()
                 state["batch"] = batch
                 self.network.run(batch, state)
@@ -120,19 +124,38 @@ class Estimator:
         return state
 
     def test(self) -> MutableMapping[str, object]:
-        """Evaluate the network."""
+        """Evaluate the network with FastEstimator style logging."""
 
         state: MutableMapping[str, object] = {"mode": "eval", "metrics": {}}
         for t in self.traces:
             if hasattr(t, "on_epoch_begin"):
                 t.on_epoch_begin(state)
+
+        total_loss = 0.0
+        loss_count = 0
+        step = 0
         for batch in self.pipeline.get_loader("eval"):
+            step += 1
+            state["batch"] = batch
             self.network.run(batch, state)
             for t in self.traces:
                 if hasattr(t, "on_batch_end"):
                     t.on_batch_end(batch, state)
+            loss_val = batch.get("ce")
+            if isinstance(loss_val, mx.array):
+                loss_val = float(loss_val.item())
+            if loss_val is not None:
+                total_loss += float(loss_val)
+                loss_count += 1
+
         for t in self.traces:
             if hasattr(t, "on_epoch_end"):
                 t.on_epoch_end(state)
-        print(f"Test metrics: {state['metrics']}")
+        if loss_count:
+            state["metrics"]["ce"] = total_loss / loss_count
+        acc = state["metrics"].get("accuracy")
+        ce_val = state["metrics"].get("ce")
+        print(
+            f"FastMLX-Test: step: {self.global_step}; epoch: {self.current_epoch}; accuracy: {acc}; ce: {ce_val};"
+        )
         return state
