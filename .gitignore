@@ -1,3 +1,4 @@
 fastestimator/
 mlx/
 fastmlx.egg-info/
+**/__pycache__/**
