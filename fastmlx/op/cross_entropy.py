@@ -16,9 +16,5 @@ class CrossEntropy(Op):
 
     def forward(self, data: Sequence[mx.array], state: MutableMapping[str, Any]) -> mx.array:
         y_pred, y_true = data
-        if not isinstance(y_pred, mx.array):
-            y_pred = mx.array(y_pred)
-        if not isinstance(y_true, mx.array):
-            y_true = mx.array(y_true)
         loss = nn.losses.cross_entropy(y_pred, y_true)
         return mx.mean(loss)

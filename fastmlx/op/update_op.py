@@ -25,11 +25,6 @@ class UpdateOp(Op):
             return None
         if state.get("mode") != "train":
             return None
-        if not isinstance(x, mx.array):
-            x = mx.array(x)
-        if not isinstance(y, mx.array):
-            y = mx.array(y)
-
         def loss_fn(x_data, y_data):
             logits = self.model(x_data)
             loss = nn.losses.cross_entropy(logits, y_data)

@@ -20,7 +20,5 @@ class Normalize(Op):
         self.max_pixel_value = max_pixel_value
 
     def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> mx.array:
-        if not isinstance(data, mx.array):
-            data = mx.array(data)
         x = data.astype(mx.float32) / self.max_pixel_value
         return (x - self.mean) / self.std

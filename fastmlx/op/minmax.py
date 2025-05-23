@@ -14,6 +14,4 @@ class Minmax(Op):
         super().__init__(inputs, outputs)
 
     def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> mx.array:
-        if not isinstance(data, mx.array):
-            data = mx.array(data)
         return data.astype(mx.float32) / 255.0
