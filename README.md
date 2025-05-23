@@ -11,3 +11,11 @@ Install `fastmlx` using `pip`:
 ```bash
 pip install -e .
 ```
+
+## Running Tests
+
+The unit tests use Python's ``unittest`` framework. Run all tests with:
+
+```bash
+python -m unittest discover -s tests
+```
