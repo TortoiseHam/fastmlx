@@ -6,9 +6,7 @@ import tempfile
 import fastmlx as fe
 from fastmlx.architecture import LeNet
 from fastmlx.dataset.data import mnist
-from fastmlx.op.numpyop.univariate import Minmax
-from fastmlx.op.tensorop.loss import CrossEntropy
-from fastmlx.op.tensorop.model import ModelOp, UpdateOp
+from fastmlx.op import Minmax, CrossEntropy, ModelOp, UpdateOp
 from fastmlx.schedule import cosine_decay
 from fastmlx.trace.metric import Accuracy
 from fastmlx.trace.io import BestModelSaver

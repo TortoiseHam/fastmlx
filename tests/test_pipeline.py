@@ -4,7 +4,7 @@ import mlx.core as mx
 
 import fastmlx as fe
 from fastmlx.dataset import MLXDataset
-from fastmlx.op.numpyop import Minmax
+from fastmlx.op import Minmax
 
 
 class TestPipeline(unittest.TestCase):

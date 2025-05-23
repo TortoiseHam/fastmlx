@@ -1,15 +1,16 @@
-"""Loss related tensor operations."""
-
 from __future__ import annotations
 
 from typing import Any, MutableMapping, Sequence
 
 import mlx.nn as nn
 import mlx.core as mx
-from ..op import Op
+
+from .op import Op
 
 
 class CrossEntropy(Op):
+    """Compute the mean cross entropy loss."""
+
     def __init__(self, inputs: Sequence[str], outputs: str) -> None:
         super().__init__(inputs, outputs)
 

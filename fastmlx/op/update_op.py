@@ -1,27 +1,18 @@
-"""Operations wrapping MLX models."""
-
 from __future__ import annotations
 
 from typing import Any, MutableMapping
 
 import mlx.nn as nn
 import mlx.core as mx
+
+from .op import Op
+
 Array = mx.array
-from ..op import Op
-
-
-class ModelOp(Op):
-    def __init__(self, model: nn.Module, inputs: str | list[str], outputs: str | list[str]) -> None:
-        super().__init__(inputs, outputs)
-        self.model: nn.Module = model
-
-    def forward(self, data: Any, state: MutableMapping[str, Any]) -> Array:
-        if not isinstance(data, mx.array):
-            data = mx.array(data)
-        return self.model(data)
 
 
 class UpdateOp(Op):
+    """Compute gradients and update model parameters."""
+
     def __init__(self, model: nn.Module, loss_name: str) -> None:
         super().__init__(inputs=loss_name, outputs=None)
         self.model: nn.Module = model
@@ -32,10 +23,8 @@ class UpdateOp(Op):
         y = batch.get("y")
         if x is None or y is None:
             return None
-
         if state.get("mode") != "train":
             return None
-
         if not isinstance(x, mx.array):
             x = mx.array(x)
         if not isinstance(y, mx.array):
