@@ -1,17 +1,27 @@
-from typing import List
+"""Training and evaluation orchestration."""
+
+from __future__ import annotations
+
+from typing import Iterable, List, MutableMapping, Optional
+
 from .pipeline import Pipeline
 from .network import Network
-from .trace.metric import Accuracy
 
 
 class Estimator:
-    def __init__(self, pipeline: Pipeline, network: Network, epochs: int, traces: List=None):
-        self.pipeline = pipeline
-        self.network = network
-        self.epochs = epochs
-        self.traces = traces or []
+    """Run a :class:`~fastmlx.pipeline.Pipeline` using a :class:`~fastmlx.network.Network`."""
 
-    def fit(self):
+    def __init__(self, pipeline: Pipeline, network: Network, epochs: int,
+                 traces: Optional[Iterable[object]] | None = None) -> None:
+        self.pipeline: Pipeline = pipeline
+        self.network: Network = network
+        self.epochs: int = epochs
+        self.traces: List[object] = list(traces or [])
+
+    def fit(self) -> MutableMapping[str, object]:
+        """Train the network."""
+
+        state: MutableMapping[str, object] = {}
         for epoch in range(self.epochs):
             state = {"mode": "train", "epoch": epoch, "metrics": {}}
             for t in self.traces:
@@ -29,8 +39,10 @@ class Estimator:
             print(f"Epoch {epoch+1}: {state['metrics']}")
         return state
 
-    def test(self):
-        state = {"mode": "eval", "metrics": {}}
+    def test(self) -> MutableMapping[str, object]:
+        """Evaluate the network."""
+
+        state: MutableMapping[str, object] = {"mode": "eval", "metrics": {}}
         for t in self.traces:
             if hasattr(t, "on_epoch_begin"):
                 t.on_epoch_begin(state)

@@ -1,4 +1,9 @@
+"""Utilities for loading the MNIST dataset using MLX."""
+
+from __future__ import annotations
+
 from typing import Tuple
+
 import numpy as np
 from mlx.data.datasets import mnist as mlx_mnist
 from ..numpy_dataset import NumpyDataset

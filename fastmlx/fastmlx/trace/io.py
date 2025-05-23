@@ -1,17 +1,23 @@
+"""Input/output related traces."""
+
+from __future__ import annotations
+
 import os
+from typing import MutableMapping, Optional
+
 import mlx.core as mx
 
 
 class BestModelSaver:
-    def __init__(self, model, save_dir, metric="accuracy", save_best_mode="max"):
+    def __init__(self, model, save_dir: str, metric: str = "accuracy", save_best_mode: str = "max") -> None:
         self.model = model
         self.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
         self.metric = metric
         self.save_best_mode = save_best_mode
-        self.best = None
+        self.best: Optional[float] = None
 
-    def on_epoch_end(self, state):
+    def on_epoch_end(self, state: MutableMapping[str, object]) -> None:
         score = state['metrics'].get(self.metric)
         if score is None:
             return
