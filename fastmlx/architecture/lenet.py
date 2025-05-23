@@ -29,5 +29,5 @@ class LeNet(nn.Module):
         x = nn.relu(self.conv3(x))
         x = x.reshape(x.shape[0], -1)
         x = nn.relu(self.fc1(x))
-        x = nn.softmax(self.fc2(x), axis=-1)
+        x = self.fc2(x)
         return x

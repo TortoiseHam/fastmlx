@@ -24,7 +24,7 @@ class TestMNISTTraining(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch("fastmlx.dataset.data.mnist.mlx_mnist.load_mnist", side_effect=fake_load_mnist):
-                est = mnist_app.get_estimator(epochs=1, batch_size=2, save_dir=tmpdir)
+                est = mnist_app.get_estimator(epochs=1, batch_size=2, save_dir=tmpdir, num_process=0)
                 # Simplify accuracy computation and bypass network execution to
                 # avoid triggering heavy JIT compilation during tests.
                 def simple_acc(self, batch, state):

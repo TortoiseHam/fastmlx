@@ -55,5 +55,5 @@ class ResNet9(nn.Module):
         # Global pooling to reduce the spatial dimensions down to 1x1 so that
         # the final fully connected layer receives 512 features per sample.
         x = mx.max(x, axis=(1, 2))
-        x = nn.softmax(self.fc(x), axis=-1)
+        x = self.fc(x)
         return x

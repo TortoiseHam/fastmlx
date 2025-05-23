@@ -13,13 +13,19 @@ from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
 
 
-def get_estimator(epochs: int = 2, batch_size: int = 32, save_dir: str = tempfile.mkdtemp()) -> fe.Estimator:
+def get_estimator(
+    epochs: int = 2,
+    batch_size: int = 32,
+    save_dir: str = tempfile.mkdtemp(),
+    num_process: int | None = None,
+) -> fe.Estimator:
     train_data, eval_data = mnist.load_data()
     pipeline = fe.Pipeline(
         train_data=train_data,
         eval_data=eval_data,
         batch_size=batch_size,
         ops=[Minmax(inputs="x", outputs="x")],
+        num_process=num_process,
     )
     model = fe.build(model_fn=lambda: LeNet(input_shape=(1,28,28)), optimizer_fn="adam")
     network = fe.Network([

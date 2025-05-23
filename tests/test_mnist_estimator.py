@@ -17,7 +17,7 @@ class TestMNISTEstimator(unittest.TestCase):
             ]
 
         with patch("fastmlx.dataset.data.mnist.mlx_mnist.load_mnist", side_effect=fake_load_mnist):
-            est = mnist_app.get_estimator(epochs=1, batch_size=2)
+            est = mnist_app.get_estimator(epochs=1, batch_size=2, num_process=0)
             loader = est.pipeline.get_loader("train")
             batch = next(iter(loader))
             state = {"mode": "train"}

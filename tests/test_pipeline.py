@@ -18,6 +18,7 @@ class TestPipeline(unittest.TestCase):
             train_data=data,
             batch_size=2,
             ops=[Minmax("x", "x")],
+            num_process=0,
         )
         loader = pipe.get_loader("train")
         batch = next(iter(loader))
