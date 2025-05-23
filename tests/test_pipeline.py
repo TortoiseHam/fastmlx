@@ -1,10 +1,10 @@
 import unittest
 
-import numpy as np
+import mlx.core as mx
 
 import fastmlx as fe
-from fastmlx.dataset import NumpyDataset
-from fastmlx.op.numpyop import ExpandDims, Minmax
+from fastmlx.dataset import MLXDataset
+from fastmlx.op.numpyop import Minmax
 
 
 class TestPipeline(unittest.TestCase):
@@ -13,16 +13,16 @@ class TestPipeline(unittest.TestCase):
     def test_pipeline_ops(self) -> None:
         """Ensure ops run and produce expected results."""
 
-        data = NumpyDataset({"x": np.zeros((4, 28, 28), dtype=np.uint8)})
+        data = MLXDataset({"x": mx.zeros((4, 28, 28, 1), dtype=mx.uint8)})
         pipe = fe.Pipeline(
             train_data=data,
             batch_size=2,
-            ops=[ExpandDims("x", "x", axis=-1), Minmax("x", "x")],
+            ops=[Minmax("x", "x")],
         )
         loader = pipe.get_loader("train")
         batch = next(iter(loader))
         self.assertEqual(batch["x"].shape, (2, 28, 28, 1))
-        self.assertTrue(np.allclose(batch["x"], 0.0))
+        self.assertTrue(mx.all(batch["x"] == 0.0).item())
 
 
 if __name__ == "__main__":

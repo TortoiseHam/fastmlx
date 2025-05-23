@@ -6,7 +6,7 @@ import tempfile
 import fastmlx as fe
 from fastmlx.architecture import LeNet
 from fastmlx.dataset.data import mnist
-from fastmlx.op.numpyop.univariate import ExpandDims, Minmax
+from fastmlx.op.numpyop.univariate import Minmax
 from fastmlx.op.tensorop.loss import CrossEntropy
 from fastmlx.op.tensorop.model import ModelOp, UpdateOp
 from fastmlx.schedule import cosine_decay
@@ -21,7 +21,7 @@ def get_estimator(epochs: int = 2, batch_size: int = 32, save_dir: str = tempfil
         train_data=train_data,
         eval_data=eval_data,
         batch_size=batch_size,
-        ops=[ExpandDims(inputs="x", outputs="x", axis=-1), Minmax(inputs="x", outputs="x")],
+        ops=[Minmax(inputs="x", outputs="x")],
     )
     model = fe.build(model_fn=lambda: LeNet(input_shape=(1,28,28)), optimizer_fn="adam")
     network = fe.Network([
