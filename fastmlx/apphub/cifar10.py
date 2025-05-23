@@ -18,13 +18,18 @@ from fastmlx.op import (
     ModelOp,
     UpdateOp,
 )
-from fastmlx.schedule import cosine_decay
 from fastmlx.trace.metric import Accuracy
 from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
 
+def lr_schedule(step):
+    if step <= 490:
+        lr = step / 490 * 0.4
+    else:
+        lr = (2352 - step) / 1862 * 0.4
+    return lr * 0.1
 
-def get_estimator(epochs: int = 2, batch_size: int = 64, save_dir: str = tempfile.mkdtemp()) -> fe.Estimator:
+def get_estimator(epochs: int = 24, batch_size: int = 512, save_dir: str = tempfile.mkdtemp()) -> fe.Estimator:
     train_data, eval_data = cifar10.load_data()
     pipeline = fe.Pipeline(
         train_data=train_data,
@@ -48,7 +53,7 @@ def get_estimator(epochs: int = 2, batch_size: int = 64, save_dir: str = tempfil
     traces = [
         Accuracy(true_key="y", pred_key="y_pred"),
         BestModelSaver(model=model, save_dir=save_dir, metric="accuracy"),
-        LRScheduler(model=model, lr_fn=lambda step: cosine_decay(step, cycle_length=7500, init_lr=1e-3))
+        LRScheduler(model=model, lr_fn=lr_schedule)
     ]
     estimator = fe.Estimator(pipeline=pipeline, network=network, epochs=epochs, traces=traces)
     return estimator
