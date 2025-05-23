@@ -6,7 +6,7 @@ import tempfile
 import fastmlx as fe
 from fastmlx.architecture import ResNet9
 from fastmlx.dataset.data import cifar10
-from fastmlx.op.numpyop import (
+from fastmlx.op import (
     Normalize,
     PadIfNeeded,
     RandomCrop,
@@ -14,9 +14,10 @@ from fastmlx.op.numpyop import (
     CoarseDropout,
     Onehot,
     Sometimes,
+    CrossEntropy,
+    ModelOp,
+    UpdateOp,
 )
-from fastmlx.op.tensorop.loss import CrossEntropy
-from fastmlx.op.tensorop.model import ModelOp, UpdateOp
 from fastmlx.schedule import cosine_decay
 from fastmlx.trace.metric import Accuracy
 from fastmlx.trace.io import BestModelSaver
