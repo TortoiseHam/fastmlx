@@ -10,6 +10,8 @@ setup(
         "mlx",
         "mlx-data",
         "mlx-lm",
+        "albumentations",
+        "plotly"
     ],
     python_requires=">=3.11",
 )
