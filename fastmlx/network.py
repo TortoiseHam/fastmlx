@@ -31,6 +31,6 @@ class Network:
         for op in self.ops:
             if isinstance(op, Op) and op.outputs:
                 for k in op.outputs:
-                    if "loss" in k:
+                    if "loss" in k or k in {"ce"}:
                         keys.add(k)
         return keys

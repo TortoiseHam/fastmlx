@@ -33,6 +33,9 @@ class UpdateOp(Op):
         if x is None or y is None:
             return None
 
+        if state.get("mode") != "train":
+            return None
+
         if not isinstance(x, mx.array):
             x = mx.array(x)
         if not isinstance(y, mx.array):

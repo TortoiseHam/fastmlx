@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import Callable, MutableMapping
 
+from .base import Trace
 
-class LRScheduler:
+
+class LRScheduler(Trace):
     def __init__(self, model, lr_fn: Callable[[int], float]):
         self.model = model
         self.lr_fn = lr_fn

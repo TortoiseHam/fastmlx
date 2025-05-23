@@ -5,10 +5,12 @@ from __future__ import annotations
 import os
 from typing import MutableMapping, Optional
 
+from .base import Trace
+
 import mlx.core as mx
 
 
-class BestModelSaver:
+class BestModelSaver(Trace):
     def __init__(self, model, save_dir: str, metric: str = "accuracy", save_best_mode: str = "max") -> None:
         self.model = model
         self.save_dir = save_dir
@@ -29,3 +31,4 @@ class BestModelSaver:
             # Utilize MLX's built-in model saving utility to properly handle
             # nested parameter structures.
             self.model.save_weights(path)
+            print(f"FastMLX-BestModelSaver: Saved model to {path}")

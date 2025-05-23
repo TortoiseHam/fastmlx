@@ -52,6 +52,8 @@ class ResNet9(nn.Module):
         x = nn.leaky_relu(self.bn3(self.conv3(x)), negative_slope=0.1)
         x = self.pool(x)
         x = x + self.res3(x)
-        x = x.reshape(x.shape[0], -1)
+        # Global pooling to reduce the spatial dimensions down to 1x1 so that
+        # the final fully connected layer receives 512 features per sample.
+        x = mx.max(x, axis=(1, 2))
         x = nn.softmax(self.fc(x), axis=-1)
         return x
