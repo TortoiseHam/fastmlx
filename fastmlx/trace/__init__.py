@@ -1,7 +1,8 @@
 """Tracing utilities."""
 
-from .metric import Accuracy
+from .base import Trace
+from .metric import Accuracy, LossMonitor
 from .io import BestModelSaver
 from .adapt import LRScheduler
 
-__all__ = ["Accuracy", "BestModelSaver", "LRScheduler"]
+__all__ = ["Trace", "Accuracy", "LossMonitor", "BestModelSaver", "LRScheduler"]
