@@ -15,7 +15,9 @@ class ModelOp(Op):
         super().__init__(inputs, outputs)
         self.model: nn.Module = model
 
-    def forward(self, data: Array, state: MutableMapping[str, Any]) -> Array:
+    def forward(self, data: Any, state: MutableMapping[str, Any]) -> Array:
+        if not isinstance(data, mx.array):
+            data = mx.array(data)
         return self.model(data)
 
 
