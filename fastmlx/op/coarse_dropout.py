@@ -20,8 +20,6 @@ class CoarseDropout(Op):
         self.fill_value = fill_value
 
     def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> mx.array:
-        if not isinstance(data, mx.array):
-            data = mx.array(data)
         x = np.array(data)
         if x.ndim == 4:
             batch, h, w, c = x.shape

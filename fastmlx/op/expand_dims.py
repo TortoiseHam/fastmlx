@@ -15,6 +15,4 @@ class ExpandDims(Op):
         self.axis = axis
 
     def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> mx.array:
-        if not isinstance(data, mx.array):
-            data = mx.array(data)
         return mx.expand_dims(data, axis=self.axis)

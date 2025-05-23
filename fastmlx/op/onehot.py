@@ -18,8 +18,6 @@ class Onehot(Op):
         self.label_smoothing = label_smoothing
 
     def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> mx.array:
-        if not isinstance(data, mx.array):
-            data = mx.array(data)
         y = np.array(data).astype(int)
         oh = np.eye(self.num_classes, dtype=np.float32)[y]
         if self.label_smoothing:

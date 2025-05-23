@@ -23,13 +23,12 @@ class Accuracy(Trace):
     def on_batch_end(self, batch: MutableMapping[str, object], state: MutableMapping[str, object]) -> None:
         y = batch[self.true_key]
         y_pred = batch[self.pred_key]
-        if not isinstance(y_pred, mx.array):
-            y_pred = mx.array(y_pred)
-        if not isinstance(y, mx.array):
-            y = mx.array(y)
+        # ``y`` may be provided either as integer labels or one-hot vectors.
+        # Convert to integer labels to simplify the equality check.
         pred = mx.argmax(y_pred, axis=-1)
-        self.correct += int(mx.sum(pred == y).item())
-        self.total += y.shape[0]
+        true = mx.argmax(y, axis=-1) if y.ndim > 1 else y
+        self.correct += int(mx.sum(pred == true).item())
+        self.total += true.shape[0]
 
     def on_epoch_end(self, state: MutableMapping[str, object]) -> None:
         state['metrics']["accuracy"] = self.correct / max(1, self.total)

@@ -16,8 +16,6 @@ class HorizontalFlip(Op):
         self.prob = prob
 
     def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> mx.array:
-        if not isinstance(data, mx.array):
-            data = mx.array(data)
         x = np.array(data)
         if np.random.rand() < self.prob:
             if x.ndim == 4:
