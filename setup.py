@@ -13,6 +13,6 @@ setup(
     description="Lightweight MLX-based deep learning framework",
     packages=find_packages(include=["fastmlx*"]),
     install_requires=read_requirements(),
-    python_requires=">=3.10",
+    python_requires=">=3.12",
 )
 
