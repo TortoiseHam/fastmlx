@@ -25,6 +25,21 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(batch["x"].shape, (2, 28, 28, 1))
         self.assertTrue(mx.all(batch["x"] == 0.0).item())
 
+    def test_pipeline_threaded(self) -> None:
+        """Ensure threaded loading behaves like single-threaded."""
+
+        data = MLXDataset({"x": mx.zeros((4, 28, 28, 1), dtype=mx.uint8)})
+        pipe = fe.Pipeline(
+            train_data=data,
+            batch_size=2,
+            ops=[Minmax("x", "x")],
+            num_process=2,
+        )
+        loader = pipe.get_loader("train")
+        batch = next(iter(loader))
+        self.assertEqual(batch["x"].shape, (2, 28, 28, 1))
+        self.assertTrue(mx.all(batch["x"] == 0.0).item())
+
 
 if __name__ == "__main__":
     unittest.main()

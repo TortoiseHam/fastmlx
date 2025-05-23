@@ -10,3 +10,8 @@ If you learn anything useful about the FastEstimator, MLX, or FastMLX codebases 
 
 ---
 
+Data Loader Notes:
+* `mlx.data` can be used for GIL-free data pipelines. `Buffer.ordered_prefetch`
+  spawns C++ threads and releases the GIL internally.
+* `num_process=None` will use all CPU cores. A value of `0` disables
+  parallelism.
