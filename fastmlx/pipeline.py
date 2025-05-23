@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+from multiprocessing.pool import ThreadPool
 from typing import Iterable, Iterator, List, MutableMapping, Optional
 
 import mlx.core as mx
@@ -49,12 +50,12 @@ class Pipeline:
                  eval_data: Optional[Iterable] = None,
                  batch_size: int = 32,
                  ops: Optional[Iterable] = None,
-                 num_process: int = 0) -> None:
+                 num_process: Optional[int] = None) -> None:
         self.train_data: Iterable = train_data
         self.eval_data: Optional[Iterable] = eval_data
         self.batch_size: int = batch_size
         self.ops: List = list(ops or [])
-        self.num_process: int = num_process
+        self.num_process: int = mp.cpu_count() if num_process is None else num_process
 
     def _loader(self, dataset: Iterable) -> Iterator[MutableMapping[str, object]]:
         if self.num_process <= 0:
@@ -72,7 +73,7 @@ class Pipeline:
                                 batch[k] = v
                 yield batch
         else:
-            with mp.Pool(self.num_process, initializer=_init_pool, initargs=(dataset, self.ops)) as pool:
+            with ThreadPool(self.num_process, initializer=_init_pool, initargs=(dataset, self.ops)) as pool:
                 for start in range(0, len(dataset), self.batch_size):
                     indices = list(range(start, min(start + self.batch_size, len(dataset))))
                     samples = pool.map(_process_index, indices)

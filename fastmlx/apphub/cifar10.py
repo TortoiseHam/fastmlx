@@ -29,7 +29,12 @@ def lr_schedule(step):
         lr = (2352 - step) / 1862 * 0.4
     return lr * 0.1
 
-def get_estimator(epochs: int = 24, batch_size: int = 512, save_dir: str = tempfile.mkdtemp()) -> fe.Estimator:
+def get_estimator(
+    epochs: int = 24,
+    batch_size: int = 512,
+    save_dir: str = tempfile.mkdtemp(),
+    num_process: int | None = None,
+) -> fe.Estimator:
     train_data, eval_data = cifar10.load_data()
     pipeline = fe.Pipeline(
         train_data=train_data,
@@ -43,6 +48,7 @@ def get_estimator(epochs: int = 24, batch_size: int = 512, save_dir: str = tempf
             CoarseDropout(inputs="x", outputs="x", max_holes=1),
             Onehot(inputs="y", outputs="y", num_classes=10, label_smoothing=0.2),
         ],
+        num_process=num_process,
     )
     model = fe.build(model_fn=lambda: ResNet9(input_shape=(3, 32, 32)), optimizer_fn="adam")
     network = fe.Network([
