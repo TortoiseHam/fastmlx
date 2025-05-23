@@ -6,12 +6,4 @@ The FastEstimator, MLX, and MLX-Data repositories have been cloned into your wor
 
 Be careful to always use rigorous type hinting. Look for high quality solutions rather than shortcuts.
 
-If you learn anything useful about the FastEstimator, MLX, or FastMLX codebases which is worth recording for future reference (you will be doing additional code-porting tasks in the future), you can use the rest of this document below the line as a scratchpad in order to store persistent tips for your future self. 
-
----
-
-Data Loader Notes:
-* `mlx.data` can be used for GIL-free data pipelines. `Buffer.ordered_prefetch`
-  spawns C++ threads and releases the GIL internally.
-* `num_process=None` will use all CPU cores. A value of `0` disables
-  parallelism.
+If you learn anything useful about the FastEstimator, MLX, or FastMLX codebases which is worth recording for future reference (you will be doing additional code-porting tasks in the future), you can record for your future self in the AGENT_SCRATCHPAD.md file.

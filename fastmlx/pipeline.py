@@ -8,8 +8,16 @@ from typing import Iterable, Iterator, List, MutableMapping, Optional
 import mlx.core as mx
 import mlx.data as dx
 
-def _process_sample(sample: MutableMapping[str, mx.array], ops: List) -> MutableMapping[str, mx.array]:
+def _process_sample(
+    sample: MutableMapping[str, mx.array],
+    ops: List,
+    state: Optional[MutableMapping[str, object]] = None,
+) -> MutableMapping[str, mx.array]:
     """Apply Ops to a single sample."""
+
+    if state is None:
+        state = {}
+
     for op in ops:
         inp = sample[op.inputs[0]] if len(op.inputs) == 1 else [sample[k] for k in op.inputs]
         out = op.forward(inp, state)
@@ -53,7 +61,7 @@ class Pipeline:
 
         def transform(sample: MutableMapping[str, object]) -> MutableMapping[str, object]:
             mx_sample = {k: mx.array(v) for k, v in sample.items()}
-            return _process_sample(mx_sample, self.ops)
+            return _process_sample(mx_sample, self.ops, {})
 
         stream = buffer.sample_transform(transform)
         stream = stream.batch(self.batch_size)
