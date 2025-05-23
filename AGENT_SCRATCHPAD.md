@@ -10,4 +10,8 @@ Additional Notes:
 * When the dataset already consists of MLX arrays (for example ``MLXDataset``),
   batching by direct array slicing avoids creating a ``mlx.data.Buffer``. This
   reduces memory usage and sidesteps some ``mlx.data`` event errors encountered
-  with very large datasets.
+with very large datasets.
+
+Training Optimization Notes:
+* Using `mx.compile` to wrap the forward/backward/update step dramatically speeds up repeated calls.
+* Capture `model.state`, `optimizer.state`, and `mx.random.state` as inputs/outputs so that weight updates persist between iterations.
