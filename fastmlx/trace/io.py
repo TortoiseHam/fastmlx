@@ -26,4 +26,6 @@ class BestModelSaver:
         ):
             self.best = score
             path = os.path.join(self.save_dir, "model.npz")
-            mx.savez(path, *self.model.parameters())
+            # Utilize MLX's built-in model saving utility to properly handle
+            # nested parameter structures.
+            self.model.save_weights(path)
