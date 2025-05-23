@@ -17,10 +17,12 @@ from fastmlx.trace.adapt import LRScheduler
 
 def get_estimator(epochs: int = 2, batch_size: int = 32, save_dir: str = tempfile.mkdtemp()) -> fe.Estimator:
     train_data, eval_data = mnist.load_data()
-    pipeline = fe.Pipeline(train_data=train_data,
-                           eval_data=eval_data,
-                           batch_size=batch_size,
-                           ops=[ExpandDims(inputs="x", outputs="x"), Minmax(inputs="x", outputs="x")])
+    pipeline = fe.Pipeline(
+        train_data=train_data,
+        eval_data=eval_data,
+        batch_size=batch_size,
+        ops=[ExpandDims(inputs="x", outputs="x", axis=-1), Minmax(inputs="x", outputs="x")],
+    )
     model = fe.build(model_fn=lambda: LeNet(input_shape=(1,28,28)), optimizer_fn="adam")
     network = fe.Network([
         ModelOp(model=model, inputs="x", outputs="y_pred"),
