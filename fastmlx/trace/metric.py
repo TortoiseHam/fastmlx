@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import MutableMapping
 
-import numpy as np
+import mlx.core as mx
 
 
 class Accuracy:
@@ -21,9 +21,13 @@ class Accuracy:
     def on_batch_end(self, batch: MutableMapping[str, object], state: MutableMapping[str, object]) -> None:
         y = batch[self.true_key]
         y_pred = batch[self.pred_key]
-        pred = y_pred.argmax(axis=-1)
-        self.correct += int(np.sum(pred == y))
-        self.total += len(y)
+        if not isinstance(y_pred, mx.array):
+            y_pred = mx.array(y_pred)
+        if not isinstance(y, mx.array):
+            y = mx.array(y)
+        pred = mx.argmax(y_pred, axis=-1)
+        self.correct += int(mx.sum(pred == y).item())
+        self.total += y.shape[0]
 
     def on_epoch_end(self, state: MutableMapping[str, object]) -> None:
         state['metrics']["accuracy"] = self.correct / max(1, self.total)

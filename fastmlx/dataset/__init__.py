@@ -1,5 +1,5 @@
 """Datasets used by :mod:`fastmlx`."""
 
-from .numpy_dataset import NumpyDataset
+from .mlx_dataset import MLXDataset
 
-__all__ = ["NumpyDataset"]
+__all__ = ["MLXDataset"]
