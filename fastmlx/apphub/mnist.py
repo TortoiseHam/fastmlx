@@ -1,3 +1,7 @@
+"""Example MNIST training script using :mod:`fastmlx`."""
+
+from __future__ import annotations
+
 import tempfile
 import fastmlx as fe
 from fastmlx.architecture import LeNet
@@ -11,7 +15,7 @@ from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
 
 
-def get_estimator(epochs=2, batch_size=32, save_dir=tempfile.mkdtemp()):
+def get_estimator(epochs: int = 2, batch_size: int = 32, save_dir: str = tempfile.mkdtemp()) -> fe.Estimator:
     train_data, eval_data = mnist.load_data()
     pipeline = fe.Pipeline(train_data=train_data,
                            eval_data=eval_data,

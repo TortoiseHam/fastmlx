@@ -1,9 +1,15 @@
+"""Utility helpers for building models."""
+
+from __future__ import annotations
+
+from typing import Callable
+
 import mlx.nn as nn
 import mlx.optimizers as optim
 import mlx.core as mx
 
 
-def build(model_fn, optimizer_fn="adam", **kwargs):
+def build(model_fn: Callable[[], nn.Module], optimizer_fn: str | Callable[[], optim.Optimizer] = "adam", **kwargs) -> nn.Module:
     """Instantiate a model and optimizer."""
     model = model_fn()
     if isinstance(optimizer_fn, str):
