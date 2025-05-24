@@ -5,7 +5,7 @@ from __future__ import annotations
 import tempfile
 import fastmlx as fe
 from fastmlx.architecture import ResNet9
-from fastmlx.dataset.data import cifar10
+from fastmlx.dataset.data import cifair10
 from fastmlx.op import (
     Normalize,
     PadIfNeeded,
@@ -35,7 +35,7 @@ def get_estimator(
     save_dir: str = tempfile.mkdtemp(),
     num_process: int | None = None,
 ) -> fe.Estimator:
-    train_data, eval_data = cifar10.load_data()
+    train_data, eval_data = cifair10.load_data()
     pipeline = fe.Pipeline(
         train_data=train_data,
         eval_data=eval_data,
