@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 import pickle
+import re
 import shutil
 import urllib.request
+import zipfile
 from pathlib import Path
 from typing import Tuple
 
@@ -19,11 +21,32 @@ _CIFAIR10_FILE_ID = "1dqTgqMVvgx_FZNAC7TqzoA0hYX1ttOUq"
 
 def _download_file_from_google_drive(file_id: str, destination: str) -> None:
     """Download a file from Google Drive if it does not already exist."""
+
     if os.path.exists(destination):
         return
-    url = f"https://drive.google.com/uc?id={file_id}&export=download&confirm=t"
-    with urllib.request.urlopen(url) as response, open(destination, "wb") as out_file:
-        shutil.copyfileobj(response, out_file)
+
+    base_url = "https://drive.google.com/uc?export=download"
+    initial_req = urllib.request.Request(
+        f"{base_url}&id={file_id}", headers={"User-Agent": "Mozilla/5.0"}
+    )
+    with urllib.request.urlopen(initial_req) as response:
+        if response.getheader("Content-Type", "").startswith("text/html"):
+            html = response.read().decode("utf-8")
+            match = re.search(r"confirm=([0-9A-Za-z_]+)", html)
+            if not match:
+                raise RuntimeError("Unable to obtain download confirmation token")
+            confirm_token = match.group(1)
+            confirm_req = urllib.request.Request(
+                f"{base_url}&id={file_id}&confirm={confirm_token}",
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            with urllib.request.urlopen(confirm_req) as confirm_response, open(
+                destination, "wb"
+            ) as out_file:
+                shutil.copyfileobj(confirm_response, out_file)
+        else:
+            with open(destination, "wb") as out_file:
+                shutil.copyfileobj(response, out_file)
 
 
 def _load_batch(file_path: str, label_key: str = "labels") -> Tuple[np.ndarray, np.ndarray]:
@@ -65,6 +88,8 @@ def load_data(
     if not os.path.exists(extracted_path):
         print(f"Downloading data to {root_dir}")
         _download_file_from_google_drive(_CIFAIR10_FILE_ID, compressed_path)
+        if not zipfile.is_zipfile(compressed_path):
+            raise RuntimeError(f"Downloaded file {compressed_path} is not a valid zip archive")
         print(f"Extracting data to {root_dir}")
         shutil.unpack_archive(compressed_path, root_dir)
 
