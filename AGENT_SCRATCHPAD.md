@@ -15,3 +15,5 @@ with very large datasets.
 Training Optimization Notes:
 * Using `mx.compile` to wrap the forward/backward/update step dramatically speeds up repeated calls.
 * Capture `model.state`, `optimizer.state`, and `mx.random.state` as inputs/outputs so that weight updates persist between iterations.
+Dataset Notes:
+* CiFAIR datasets mirror CIFAR but with duplicates removed. Use simple urllib download from Google Drive when porting to FastMLX.
