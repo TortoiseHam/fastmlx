@@ -17,3 +17,4 @@ Training Optimization Notes:
 * Capture `model.state`, `optimizer.state`, and `mx.random.state` as inputs/outputs so that weight updates persist between iterations.
 Dataset Notes:
 * CiFAIR datasets mirror CIFAR but with duplicates removed. Use simple urllib download from Google Drive when porting to FastMLX.
+\nBug Fix Notes:\n* Google Drive downloads may serve an HTML confirmation page first. Use urllib to fetch the page, parse the confirm token, and retry the request before saving the file. Always validate that the resulting file is a zip archive using `zipfile.is_zipfile`.\n
