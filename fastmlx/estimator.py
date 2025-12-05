@@ -21,6 +21,11 @@ class Estimator:
         epochs: Number of training epochs.
         traces: Optional list of trace callbacks.
         log_interval: How often to log training progress (in steps).
+        verbose: Verbosity level. Options:
+                 - 0: Silent (no output)
+                 - 1: Progress bar only (epoch-level)
+                 - 2: Normal output (default, logs at log_interval)
+                 - 3: Verbose (logs every batch)
 
     Example:
         >>> estimator = Estimator(
@@ -30,6 +35,12 @@ class Estimator:
         ...     traces=[Accuracy(true_key="y", pred_key="y_pred")]
         ... )
         >>> estimator.fit()
+
+        >>> # Silent training
+        >>> estimator = Estimator(..., verbose=0)
+
+        >>> # Verbose training
+        >>> estimator = Estimator(..., verbose=3)
     """
 
     def __init__(
@@ -38,15 +49,22 @@ class Estimator:
         network: Network,
         epochs: int,
         traces: Optional[Iterable[object]] = None,
-        log_interval: int = 100
+        log_interval: int = 100,
+        verbose: int = 2
     ) -> None:
         self.pipeline: Pipeline = pipeline
         self.network: Network = network
         self.epochs: int = epochs
         self.traces: List[object] = list(traces or [])
         self.log_interval = log_interval
+        self.verbose = verbose
         self.global_step: int = 0
         self.current_epoch: int = 0
+
+    def _log(self, message: str, level: int = 2) -> None:
+        """Log message if verbosity level allows."""
+        if self.verbose >= level:
+            print(message)
 
     def _get_learning_rate(self) -> Optional[float]:
         """Safely get the current learning rate from the network's model ops."""
@@ -99,8 +117,9 @@ class Estimator:
         step = self.global_step
         start_time = time.time()
 
-        print(
-            f"FastMLX-Start: step: 1; logging_interval: {self.log_interval}; num_device: 1;"
+        self._log(
+            f"FastMLX-Start: step: 1; logging_interval: {self.log_interval}; num_device: 1;",
+            level=1
         )
 
         # Call on_start for all traces
@@ -111,7 +130,7 @@ class Estimator:
         for epoch in range(self.epochs):
             # Check for early stopping before starting new epoch
             if self._should_stop(state):
-                print(f"FastMLX: Training stopped early at epoch {epoch}")
+                self._log(f"FastMLX: Training stopped early at epoch {epoch}", level=1)
                 break
 
             epoch_start = time.time()
@@ -134,7 +153,7 @@ class Estimator:
                 try:
                     self.network.run(batch, state)
                 except Exception as e:
-                    print(f"FastMLX-Error: step {step}; error: {e}")
+                    self._log(f"FastMLX-Error: step {step}; error: {e}", level=0)
                     raise
 
                 # Batch end callbacks
@@ -146,15 +165,27 @@ class Estimator:
                 if self._should_stop(state):
                     break
 
-                # Periodic logging
-                if step % self.log_interval == 0:
+                # Verbose logging (every batch)
+                if self.verbose >= 3:
                     lr = self._get_learning_rate()
                     loss_val = self._get_loss_value(batch)
                     loss_key = self._get_loss_key_name()
                     steps_per_sec = 1.0 / max(time.time() - batch_start, 1e-8)
-                    print(
+                    self._log(
                         f"FastMLX-Train: step: {step}; {loss_key}: {loss_val}; "
-                        f"model_lr: {lr}; steps/sec: {steps_per_sec:.2f};"
+                        f"model_lr: {lr}; steps/sec: {steps_per_sec:.2f};",
+                        level=3
+                    )
+                # Normal periodic logging
+                elif step % self.log_interval == 0:
+                    lr = self._get_learning_rate()
+                    loss_val = self._get_loss_value(batch)
+                    loss_key = self._get_loss_key_name()
+                    steps_per_sec = 1.0 / max(time.time() - batch_start, 1e-8)
+                    self._log(
+                        f"FastMLX-Train: step: {step}; {loss_key}: {loss_val}; "
+                        f"model_lr: {lr}; steps/sec: {steps_per_sec:.2f};",
+                        level=2
                     )
 
             # Epoch end callbacks
@@ -163,11 +194,14 @@ class Estimator:
                     t.on_epoch_end(state)
 
             epoch_time = time.time() - epoch_start
-            print(f"FastMLX-Train: step: {step}; epoch: {epoch+1}; epoch_time: {epoch_time:.2f} sec;")
+            self._log(
+                f"FastMLX-Train: step: {step}; epoch: {epoch+1}; epoch_time: {epoch_time:.2f} sec;",
+                level=1
+            )
 
             # Check for early stopping after epoch
             if self._should_stop(state):
-                print(f"FastMLX: Training stopped early after epoch {epoch + 1}")
+                self._log(f"FastMLX: Training stopped early after epoch {epoch + 1}", level=1)
                 break
 
             # Evaluation phase
@@ -181,8 +215,9 @@ class Estimator:
 
         total_time = time.time() - start_time
         lr = self._get_learning_rate()
-        print(
-            f"FastMLX-Finish: step: {step}; model_lr: {lr}; total_time: {total_time:.2f} sec;"
+        self._log(
+            f"FastMLX-Finish: step: {step}; model_lr: {lr}; total_time: {total_time:.2f} sec;",
+            level=1
         )
         return state
 
@@ -225,7 +260,7 @@ class Estimator:
             try:
                 self.network.run(batch, eval_state)
             except Exception as e:
-                print(f"FastMLX-Eval-Error: step {eval_step}; error: {e}")
+                self._log(f"FastMLX-Eval-Error: step {eval_step}; error: {e}", level=0)
                 raise
 
             # Batch end callbacks
@@ -248,7 +283,7 @@ class Estimator:
             if should_log:
                 steps_per_sec = 1.0 / max(time.time() - batch_start, 1e-8)
                 progress = f"{eval_step}/{num_batches}" if num_batches else f"{eval_step}"
-                print(f"Eval Progress: {progress}; steps/sec: {steps_per_sec:.2f};")
+                self._log(f"Eval Progress: {progress}; steps/sec: {steps_per_sec:.2f};", level=2)
 
         # Epoch end for eval
         for t in self.traces:
@@ -262,8 +297,9 @@ class Estimator:
 
         acc = eval_state["metrics"].get("accuracy")
         loss_metric = eval_state["metrics"].get(loss_key)
-        print(
-            f"FastMLX-Eval: step: {step}; epoch: {epoch+1}; accuracy: {acc}; {loss_key}: {loss_metric};"
+        self._log(
+            f"FastMLX-Eval: step: {step}; epoch: {epoch+1}; accuracy: {acc}; {loss_key}: {loss_metric};",
+            level=1
         )
 
         # Propagate should_stop from eval to train state
@@ -293,7 +329,7 @@ class Estimator:
             try:
                 self.network.run(batch, state)
             except Exception as e:
-                print(f"FastMLX-Test-Error: step {step}; error: {e}")
+                self._log(f"FastMLX-Test-Error: step {step}; error: {e}", level=0)
                 raise
 
             for t in self.traces:
@@ -315,8 +351,9 @@ class Estimator:
 
         acc = state["metrics"].get("accuracy")
         loss_metric = state["metrics"].get(loss_key)
-        print(
+        self._log(
             f"FastMLX-Test: step: {self.global_step}; epoch: {self.current_epoch}; "
-            f"accuracy: {acc}; {loss_key}: {loss_metric};"
+            f"accuracy: {acc}; {loss_key}: {loss_metric};",
+            level=1
         )
         return state

@@ -32,6 +32,13 @@ from .adapt import (
     WarmupScheduler,
 )
 
+# TensorBoard traces (optional dependency)
+try:
+    from .tensorboard import TensorBoardLogger, TensorBoardEmbedding
+    _TENSORBOARD_AVAILABLE = True
+except ImportError:
+    _TENSORBOARD_AVAILABLE = False
+
 __all__ = [
     # Base
     "Trace",
@@ -57,3 +64,7 @@ __all__ = [
     "TerminateOnNaN",
     "WarmupScheduler",
 ]
+
+# Add TensorBoard traces if available
+if _TENSORBOARD_AVAILABLE:
+    __all__.extend(["TensorBoardLogger", "TensorBoardEmbedding"])

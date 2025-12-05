@@ -33,6 +33,13 @@ from .seed import (
     get_seed,
 )
 
+from .summary import (
+    count_parameters,
+    model_summary,
+    layer_info,
+    compare_models,
+)
+
 __all__ = [
     # Device utilities
     "get_device",
@@ -59,4 +66,9 @@ __all__ = [
     # Seed utilities
     "set_seed",
     "get_seed",
+    # Model summary utilities
+    "count_parameters",
+    "model_summary",
+    "layer_info",
+    "compare_models",
 ]
