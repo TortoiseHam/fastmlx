@@ -41,6 +41,9 @@ from . import trace
 from . import architecture
 from . import dataset
 from . import schedule
+from . import search
+from . import summary
+from . import backend
 
 __all__ = [
     # Core classes
@@ -57,6 +60,9 @@ __all__ = [
     "architecture",
     "dataset",
     "schedule",
+    "search",
+    "summary",
+    "backend",
     # Version
     "__version__",
 ]
