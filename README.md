@@ -78,8 +78,75 @@ See `fastmlx/apphub/` for complete examples:
 
 ## Running Tests
 
+FastMLX has comprehensive tests covering all major components.
+
+### Quick Test Run
+
 ```bash
-pytest tests/
+# Run all tests
+uv run pytest tests/ -v
+
+# Run tests with coverage report
+uv run pytest tests/ --cov=fastmlx --cov-report=term-missing
+
+# Run specific test file
+uv run pytest tests/test_network.py -v
+
+# Run tests matching a pattern
+uv run pytest tests/ -k "test_accuracy" -v
+```
+
+### Test Categories
+
+| Test File | Coverage |
+|-----------|----------|
+| `test_network.py` | Network forward pass, op chaining |
+| `test_pipeline.py` | Data pipeline, batching, ops |
+| `test_dataset.py` | MLXDataset, CSVDataset, generators |
+| `test_ops_preprocessing.py` | Minmax, Normalize, Onehot, etc. |
+| `test_ops_loss.py` | CrossEntropy, MSE, Focal, Dice |
+| `test_ops_augmentation.py` | Flip, Rotate, Noise, Cutout |
+| `test_traces.py` | Accuracy, F1, EarlyStopping |
+| `test_architecture.py` | LeNet, ResNet9, UNet, ViT, GPT |
+| `test_schedule_full.py` | Cosine, linear, warmup schedules |
+| `test_search.py` | GridSearch, RandomSearch |
+| `test_summary.py` | Experiment tracking |
+| `test_backend.py` | Device, memory, dtype utilities |
+
+### Running Tests by Component
+
+```bash
+# Core components
+uv run pytest tests/test_network.py tests/test_pipeline.py -v
+
+# All ops
+uv run pytest tests/test_ops_*.py -v
+
+# Architectures
+uv run pytest tests/test_architecture.py -v
+
+# Data loading (important for understanding Pipeline behavior)
+uv run pytest tests/test_dataset.py tests/test_pipeline.py -v
+```
+
+### Writing New Tests
+
+Tests use Python's `unittest` framework. Example:
+
+```python
+import unittest
+import mlx.core as mx
+from fastmlx.op import MyNewOp
+
+class TestMyNewOp(unittest.TestCase):
+    def test_forward(self):
+        op = MyNewOp("x", "y")
+        data = mx.zeros((4, 28, 28, 1))
+        result = op.forward(data, {})
+        self.assertEqual(result.shape, (4, 28, 28, 1))
+
+if __name__ == "__main__":
+    unittest.main()
 ```
 
 ## License
