@@ -1,8 +1,59 @@
-"""Tracing utilities."""
+"""Tracing utilities for FastMLX."""
 
 from .base import Trace
-from .metric import Accuracy, LossMonitor
-from .io import BestModelSaver
-from .adapt import LRScheduler
 
-__all__ = ["Trace", "Accuracy", "LossMonitor", "BestModelSaver", "LRScheduler"]
+# Metric traces
+from .metric import (
+    Accuracy,
+    LossMonitor,
+    Precision,
+    Recall,
+    F1Score,
+    ConfusionMatrix,
+    MCC,
+    Dice,
+)
+
+# IO traces
+from .io import (
+    BestModelSaver,
+    ModelSaver,
+    CSVLogger,
+    ProgressLogger,
+    Timer,
+)
+
+# Adapt traces
+from .adapt import (
+    LRScheduler,
+    EarlyStopping,
+    ReduceLROnPlateau,
+    TerminateOnNaN,
+    WarmupScheduler,
+)
+
+__all__ = [
+    # Base
+    "Trace",
+    # Metrics
+    "Accuracy",
+    "LossMonitor",
+    "Precision",
+    "Recall",
+    "F1Score",
+    "ConfusionMatrix",
+    "MCC",
+    "Dice",
+    # IO
+    "BestModelSaver",
+    "ModelSaver",
+    "CSVLogger",
+    "ProgressLogger",
+    "Timer",
+    # Adapt
+    "LRScheduler",
+    "EarlyStopping",
+    "ReduceLROnPlateau",
+    "TerminateOnNaN",
+    "WarmupScheduler",
+]
