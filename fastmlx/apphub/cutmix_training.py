@@ -24,6 +24,7 @@ import fastmlx as fe
 from fastmlx.architecture import ResNet9
 from fastmlx.dataset.data import cifair10
 from fastmlx.op import (
+    Batch,
     CrossEntropy,
     HorizontalFlip,
     ModelOp,
@@ -143,20 +144,28 @@ def get_estimator(
     """
     train_data, eval_data = cifair10.load_data()
 
+    # Pipeline with explicit sample/batch op separation:
+    # - Sample ops (before Batch): per-image augmentation
+    # - Batch ops (after Batch): CutMix operates on batches
     pipeline = fe.Pipeline(
         train_data=train_data,
         eval_data=eval_data,
-        batch_size=batch_size,
         ops=[
+            # === Sample ops (applied to individual images) ===
             Normalize(inputs="x", outputs="x",
                      mean=(0.4914, 0.4822, 0.4465),
                      std=(0.2471, 0.2435, 0.2616)),
             PadIfNeeded(inputs="x", outputs="x", min_height=40, min_width=40),
             RandomCrop(inputs="x", outputs="x", height=32, width=32),
             Sometimes(HorizontalFlip(inputs="x", outputs="x")),
-            # Convert to one-hot before CutMix
+            # Convert to one-hot (required for soft labels in CutMix)
             Onehot(inputs="y", outputs="y", num_classes=10),
-            # Apply CutMix
+
+            # === Batching ===
+            Batch(batch_size=batch_size),
+
+            # === Batch ops (applied to batched data) ===
+            # CutMix cuts patches between samples in the batch, so it must be a batch op
             CutMix(inputs=("x", "y"), outputs=("x", "y"),
                   alpha=alpha, prob=cutmix_prob),
         ],
