@@ -570,3 +570,48 @@ class Pipeline:
             "avg_batch_time_ms": (total_time / len(times)) * 1000,
             "avg_batch_size": total_samples / len(times),
         }
+
+    def transform(
+        self,
+        sample: Dict[str, Any],
+        mode: str = "infer",
+    ) -> Dict[str, mx.array]:
+        """Apply pipeline operations to a single sample.
+
+        This is useful for inference on individual samples outside of training.
+        Applies sample ops, batches (with batch size 1), and batch ops.
+
+        Args:
+            sample: A single sample dictionary.
+            mode: Execution mode. Default "infer" for inference.
+
+        Returns:
+            Transformed sample as a batch of size 1 with MLX arrays.
+
+        Example:
+            >>> # During inference
+            >>> sample = {"x": np.array([1, 2, 3])}
+            >>> batch = pipeline.transform(sample, mode="infer")
+            >>> prediction = model(batch["x"])
+        """
+        state: Dict[str, Any] = {"mode": mode}
+
+        # Ensure numpy arrays
+        sample = self._to_numpy(sample)
+
+        # Apply sample ops
+        result = _process_sample(sample, self.sample_ops, state)
+
+        if isinstance(result, FilteredData):
+            raise PipelineError(
+                "Sample was filtered out by pipeline ops. "
+                "Check your filtering conditions."
+            )
+
+        # Batch the single sample (creates batch of size 1)
+        batch = self.batch_op.collate([result])
+
+        # Apply batch ops
+        batch = _apply_batch_ops(batch, self.batch_ops, state)
+
+        return batch

@@ -163,6 +163,20 @@ class Estimator:
         """Check if training should stop (e.g., from EarlyStopping)."""
         return state.get("should_stop", False)
 
+    def _trace_should_run(self, trace: object, mode: Optional[str]) -> bool:
+        """Check if a trace should run in the given mode.
+
+        Args:
+            trace: The trace object.
+            mode: Current execution mode.
+
+        Returns:
+            True if trace should run, False otherwise.
+        """
+        if hasattr(trace, "should_run"):
+            return trace.should_run(mode)
+        return True  # Default to running if no should_run method
+
     def _get_dataset_length(self, dataset: Any) -> Optional[int]:
         """Safely get dataset length."""
         try:
@@ -226,7 +240,7 @@ class Estimator:
 
             # Epoch begin callbacks
             for t in self.traces:
-                if hasattr(t, "on_epoch_begin"):
+                if hasattr(t, "on_epoch_begin") and self._trace_should_run(t, "train"):
                     t.on_epoch_begin(state)
 
             # Training loop
@@ -241,7 +255,7 @@ class Estimator:
 
                 # Batch begin callbacks
                 for t in self.traces:
-                    if hasattr(t, "on_batch_begin"):
+                    if hasattr(t, "on_batch_begin") and self._trace_should_run(t, "train"):
                         t.on_batch_begin(batch, state)
 
                 # Run network forward/backward
@@ -253,7 +267,7 @@ class Estimator:
 
                 # Batch end callbacks
                 for t in self.traces:
-                    if hasattr(t, "on_batch_end"):
+                    if hasattr(t, "on_batch_end") and self._trace_should_run(t, "train"):
                         t.on_batch_end(batch, state)
 
                 # Check for early stopping after each batch
@@ -285,7 +299,7 @@ class Estimator:
 
             # Epoch end callbacks
             for t in self.traces:
-                if hasattr(t, "on_epoch_end"):
+                if hasattr(t, "on_epoch_end") and self._trace_should_run(t, "train"):
                     t.on_epoch_end(state)
 
             epoch_time = time.time() - epoch_start
@@ -332,7 +346,7 @@ class Estimator:
 
         # Epoch begin for eval
         for t in self.traces:
-            if hasattr(t, "on_epoch_begin"):
+            if hasattr(t, "on_epoch_begin") and self._trace_should_run(t, "eval"):
                 t.on_epoch_begin(eval_state)
 
         eval_dataset = self.pipeline.eval_data
@@ -357,7 +371,7 @@ class Estimator:
 
             # Batch begin callbacks
             for t in self.traces:
-                if hasattr(t, "on_batch_begin"):
+                if hasattr(t, "on_batch_begin") and self._trace_should_run(t, "eval"):
                     t.on_batch_begin(batch, eval_state)
 
             try:
@@ -368,7 +382,7 @@ class Estimator:
 
             # Batch end callbacks
             for t in self.traces:
-                if hasattr(t, "on_batch_end"):
+                if hasattr(t, "on_batch_end") and self._trace_should_run(t, "eval"):
                     t.on_batch_end(batch, eval_state)
 
             # Track loss
@@ -390,7 +404,7 @@ class Estimator:
 
         # Epoch end for eval
         for t in self.traces:
-            if hasattr(t, "on_epoch_end"):
+            if hasattr(t, "on_epoch_end") and self._trace_should_run(t, "eval"):
                 t.on_epoch_end(eval_state)
 
         # Record average loss
@@ -418,7 +432,7 @@ class Estimator:
         state: MutableMapping[str, object] = {"mode": "eval", "metrics": {}}
 
         for t in self.traces:
-            if hasattr(t, "on_epoch_begin"):
+            if hasattr(t, "on_epoch_begin") and self._trace_should_run(t, "eval"):
                 t.on_epoch_begin(state)
 
         total_loss = 0.0
@@ -434,7 +448,7 @@ class Estimator:
 
             # Batch begin callbacks
             for t in self.traces:
-                if hasattr(t, "on_batch_begin"):
+                if hasattr(t, "on_batch_begin") and self._trace_should_run(t, "eval"):
                     t.on_batch_begin(batch, state)
 
             try:
@@ -445,7 +459,7 @@ class Estimator:
 
             # Batch end callbacks
             for t in self.traces:
-                if hasattr(t, "on_batch_end"):
+                if hasattr(t, "on_batch_end") and self._trace_should_run(t, "eval"):
                     t.on_batch_end(batch, state)
 
             loss_val = self._get_loss_value(batch)
@@ -454,7 +468,7 @@ class Estimator:
                 loss_count += 1
 
         for t in self.traces:
-            if hasattr(t, "on_epoch_end"):
+            if hasattr(t, "on_epoch_end") and self._trace_should_run(t, "eval"):
                 t.on_epoch_end(state)
 
         loss_key = self._get_loss_key_name()

@@ -44,6 +44,20 @@ class EarlyStopping(Trace):
                   the metric doesn't improve beyond this baseline.
         restore_best_weights: Whether to restore model weights from the epoch with
                               the best value of the monitored metric.
+        model: The model to save/restore weights for. Required if restore_best_weights=True.
+
+    Example:
+        >>> # Basic early stopping
+        >>> EarlyStopping(monitor="accuracy", patience=5, mode="max")
+
+        >>> # With weight restoration
+        >>> EarlyStopping(
+        ...     monitor="eval_loss",
+        ...     patience=10,
+        ...     mode="min",
+        ...     restore_best_weights=True,
+        ...     model=model
+        ... )
     """
 
     def __init__(
@@ -53,7 +67,8 @@ class EarlyStopping(Trace):
         patience: int = 5,
         mode: str = "min",
         baseline: Optional[float] = None,
-        restore_best_weights: bool = False
+        restore_best_weights: bool = False,
+        model: Optional[object] = None,
     ) -> None:
         self.monitor = monitor
         self.min_delta = min_delta
@@ -61,6 +76,13 @@ class EarlyStopping(Trace):
         self.mode = mode
         self.baseline = baseline
         self.restore_best_weights = restore_best_weights
+        self.model = model
+
+        # Validate that model is provided if restore_best_weights is True
+        if restore_best_weights and model is None:
+            raise ValueError(
+                "EarlyStopping: model must be provided when restore_best_weights=True"
+            )
 
         self.wait: int = 0
         self.stopped_epoch: int = 0
@@ -71,6 +93,19 @@ class EarlyStopping(Trace):
             self.monitor_op = lambda a, b: a < b - min_delta
         else:
             self.monitor_op = lambda a, b: a > b + min_delta
+
+    def _save_weights(self) -> None:
+        """Save current model weights."""
+        if self.model is not None and hasattr(self.model, 'parameters'):
+            # Deep copy the parameters
+            import copy
+            self.best_weights = copy.deepcopy(dict(self.model.parameters()))
+
+    def _restore_weights(self) -> None:
+        """Restore saved model weights."""
+        if self.model is not None and self.best_weights is not None:
+            if hasattr(self.model, 'update'):
+                self.model.update(self.best_weights)
 
     def on_start(self, state: MutableMapping[str, object]) -> None:
         self.wait = 0
@@ -87,25 +122,24 @@ class EarlyStopping(Trace):
 
         if self.best is None:
             self.best = current
-            if self.restore_best_weights and hasattr(state.get('model'), 'parameters'):
-                self.best_weights = state['model'].parameters()
+            if self.restore_best_weights:
+                self._save_weights()
             return
 
         if self.monitor_op(current, self.best):
             self.best = current
             self.wait = 0
-            if self.restore_best_weights and hasattr(state.get('model'), 'parameters'):
-                self.best_weights = state['model'].parameters()
+            if self.restore_best_weights:
+                self._save_weights()
         else:
             self.wait += 1
             if self.wait >= self.patience:
                 self.stopped_epoch = epoch
                 state['should_stop'] = True
-                print(f"FastMLX-EarlyStopping: Stopping training at epoch {epoch}")
+                print(f"FastMLX-EarlyStopping: Stopping training at epoch {epoch + 1}")
                 if self.restore_best_weights and self.best_weights is not None:
                     print("FastMLX-EarlyStopping: Restoring best weights")
-                    if hasattr(state.get('model'), 'update'):
-                        state['model'].update(self.best_weights)
+                    self._restore_weights()
 
 
 class ReduceLROnPlateau(Trace):
