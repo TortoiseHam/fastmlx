@@ -19,18 +19,18 @@ import argparse
 import tempfile
 from typing import Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 import fastmlx as fe
 from fastmlx.architecture import LeNet
 from fastmlx.dataset import MLXDataset
 from fastmlx.dataset.data import mnist
-from fastmlx.op import Minmax, FocalLoss, CrossEntropy, ModelOp, UpdateOp
+from fastmlx.op import CrossEntropy, FocalLoss, Minmax, ModelOp, UpdateOp
 from fastmlx.schedule import cosine_decay
-from fastmlx.trace.metric import Accuracy, Precision, Recall, F1Score
-from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Accuracy, F1Score, Precision, Recall
 
 
 def create_imbalanced_mnist(

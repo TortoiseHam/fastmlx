@@ -29,11 +29,11 @@ import mlx.optimizers as optim
 import numpy as np
 
 import fastmlx as fe
-from fastmlx.op import TensorOp, ModelOp, UpdateOp
+from fastmlx.op import ModelOp, Op, UpdateOp
 from fastmlx.trace import Trace
 
 
-class TripletMiningOp(TensorOp):
+class TripletMiningOp(Op):
     """Mine triplets from a batch of samples.
 
     Uses semi-hard negative mining: selects negatives that are farther than
@@ -64,12 +64,8 @@ class TripletMiningOp(TensorOp):
         distances = sq_norms + sq_norms.T - 2 * embeddings @ embeddings.T
         distances = mx.maximum(distances, 0.0)  # Numerical stability
 
-        # Create mask for valid pairs
-        labels = labels.flatten()
-        same_class = labels[:, None] == labels[None, :]
-        diff_class = ~same_class
-
         # For each anchor, find hardest positive and semi-hard negative
+        labels = labels.flatten()
         anchors = []
         positives = []
         negatives = []
@@ -126,7 +122,7 @@ class TripletMiningOp(TensorOp):
         )
 
 
-class TripletLoss(TensorOp):
+class TripletLoss(Op):
     """Compute triplet loss.
 
     Args:
@@ -271,25 +267,25 @@ def get_estimator(
         Configured Estimator.
     """
     from fastmlx.dataset.data import mnist
+    from fastmlx.op import Normalize
 
     # Load MNIST dataset
-    train_data, test_data = mnist.load_data()
+    train_data, eval_data = mnist.load_data()
 
     # Create pipeline with larger batch for triplet mining
     pipeline = fe.Pipeline(
-        train_data=fe.dataset.NumpyDataset(data={"x": train_data[0], "y": train_data[1]}),
-        test_data=fe.dataset.NumpyDataset(data={"x": test_data[0], "y": test_data[1]}),
+        train_data=train_data,
+        eval_data=eval_data,
         batch_size=batch_size,
         ops=[
-            fe.op.Normalize(inputs="x", outputs="x", mean=0.1307, std=0.3081),
+            Normalize(inputs="x", outputs="x", mean=0.1307, std=0.3081),
         ],
     )
 
     # Build model
     model = fe.build(
-        model=EmbeddingNetwork(embedding_dim=embedding_dim),
-        optimizer=optim.Adam(learning_rate=lr),
-        model_name="triplet_net",
+        model_fn=lambda: EmbeddingNetwork(embedding_dim=embedding_dim),
+        optimizer_fn=lambda: optim.Adam(learning_rate=lr),
     )
 
     network = fe.Network(
@@ -317,7 +313,7 @@ def get_estimator(
         traces=[
             EmbeddingQualityTrace(),
         ],
-        log_steps=100,
+        log_interval=100,
     )
 
     return estimator

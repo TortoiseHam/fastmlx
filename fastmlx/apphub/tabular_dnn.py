@@ -17,18 +17,18 @@ import argparse
 import tempfile
 from typing import Tuple
 
-import numpy as np
 import mlx.core as mx
 import mlx.nn as nn
+import numpy as np
 
 import fastmlx as fe
 from fastmlx.dataset import MLXDataset
-from fastmlx.op import Normalize, MeanSquaredError, CrossEntropy, ModelOp, UpdateOp, Op
+from fastmlx.op import CrossEntropy, MeanSquaredError, ModelOp, Normalize, UpdateOp
 from fastmlx.schedule import cosine_decay
-from fastmlx.trace.base import Trace
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
+from fastmlx.trace.base import Trace
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Accuracy
 
 
 class TabularMLP(nn.Module):

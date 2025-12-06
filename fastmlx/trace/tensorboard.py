@@ -218,7 +218,6 @@ class TensorBoardLogger(Trace):
             return
 
         try:
-            import mlx.core as mx
 
             # Get model parameters
             if hasattr(self.model, "parameters"):
@@ -418,7 +417,7 @@ class TensorBoardEmbedding(Trace):
         metadata = None
 
         if self.labels:
-            metadata = [str(l) for l in self.labels]
+            metadata = [str(label) for label in self.labels]
 
         try:
             self.writer.add_embedding(

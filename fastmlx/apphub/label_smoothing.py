@@ -21,11 +21,12 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 
 import fastmlx as fe
-from fastmlx.op import Op, TensorOp, ModelOp, UpdateOp
+from fastmlx.dataset import MLXDataset
+from fastmlx.op import ModelOp, Op, UpdateOp
 from fastmlx.trace import Accuracy
 
 
-class LabelSmoothingCrossEntropy(TensorOp):
+class LabelSmoothingCrossEntropy(Op):
     """Cross entropy loss with label smoothing.
 
     Args:
@@ -134,8 +135,8 @@ def get_estimator(
 
     # Create pipeline
     pipeline = fe.Pipeline(
-        train_data=fe.dataset.NumpyDataset(data={"x": train_data[0], "y": train_data[1]}),
-        test_data=fe.dataset.NumpyDataset(data={"x": test_data[0], "y": test_data[1]}),
+        train_data=MLXDataset(data={"x": train_data[0], "y": train_data[1]}),
+        eval_data=MLXDataset(data={"x": test_data[0], "y": test_data[1]}),
         batch_size=batch_size,
         ops=[
             fe.op.Normalize(inputs="x", outputs="x", mean=0.1307, std=0.3081),
@@ -144,9 +145,8 @@ def get_estimator(
 
     # Build model with label smoothing
     model_smooth = fe.build(
-        model=SimpleCNN(num_classes=10),
-        optimizer=optim.Adam(learning_rate=lr),
-        model_name="cnn_smooth",
+        model_fn=lambda: SimpleCNN(num_classes=10),
+        optimizer_fn=lambda: optim.Adam(learning_rate=lr),
     )
 
     network_ops = [
@@ -167,9 +167,8 @@ def get_estimator(
     # Optionally add comparison model without smoothing
     if compare:
         model_baseline = fe.build(
-            model=SimpleCNN(num_classes=10),
-            optimizer=optim.Adam(learning_rate=lr),
-            model_name="cnn_baseline",
+            model_fn=lambda: SimpleCNN(num_classes=10),
+            optimizer_fn=lambda: optim.Adam(learning_rate=lr),
         )
 
         network_ops.extend([
@@ -193,7 +192,7 @@ def get_estimator(
         network=network,
         epochs=epochs,
         traces=traces,
-        log_steps=100,
+        log_interval=100,
     )
 
     return estimator

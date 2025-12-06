@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Generator, Iterator, Optional
+from typing import Callable, Dict, Generator, Iterator, Optional
 
 import mlx.core as mx
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, MutableMapping, Sequence, Optional
+from typing import Any, MutableMapping, Optional, Sequence
 
 import mlx.core as mx
 
@@ -60,7 +60,6 @@ class FocalLoss(Op):
         if y_true.ndim == 1 or y_true.shape[-1] != num_classes:
             # Ensure y_true is integer indices
             indices = y_true.flatten().astype(mx.int32)
-            batch_size = indices.shape[0]
 
             # Create one-hot encoding using scatter-like operation
             # eye matrix gives us one-hot rows that we can index into

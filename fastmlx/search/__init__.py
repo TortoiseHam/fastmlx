@@ -1,9 +1,9 @@
 """Hyperparameter search utilities for FastMLX."""
 
-from .search import Search, SearchResults
+from .golden_section import GoldenSection
 from .grid_search import GridSearch
 from .random_search import RandomSearch
-from .golden_section import GoldenSection
+from .search import Search, SearchResults
 
 __all__ = [
     "Search",

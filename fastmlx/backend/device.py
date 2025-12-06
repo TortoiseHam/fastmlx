@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import platform
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import mlx.core as mx
 

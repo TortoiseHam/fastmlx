@@ -19,13 +19,13 @@ from typing import Any, MutableMapping, Sequence
 import mlx.core as mx
 
 import fastmlx as fe
-from fastmlx.architecture import Autoencoder, VAE
+from fastmlx.architecture import VAE, Autoencoder
 from fastmlx.dataset.data import mnist
-from fastmlx.op import Minmax, MeanSquaredError, ModelOp, UpdateOp, Op
+from fastmlx.op import MeanSquaredError, Minmax, ModelOp, Op, UpdateOp
 from fastmlx.schedule import cosine_decay
+from fastmlx.trace.adapt import LRScheduler
 from fastmlx.trace.base import Trace
 from fastmlx.trace.io import ModelSaver
-from fastmlx.trace.adapt import LRScheduler
 
 
 class VAEModelOp(Op):

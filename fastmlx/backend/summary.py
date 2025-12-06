@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
+
 import mlx.core as mx
 import mlx.nn as nn
 
@@ -287,7 +288,7 @@ def compare_models(
         },
     }
 
-    print(f"\nModel Comparison:")
+    print("\nModel Comparison:")
     print(f"{'='*50}")
     print(f"{name1}: {params1:,} params ({comparison[name1]['memory_mb']:.2f} MB)")
     print(f"{name2}: {params2:,} params ({comparison[name2]['memory_mb']:.2f} MB)")

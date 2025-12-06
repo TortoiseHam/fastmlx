@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import MutableMapping, Optional, List
 import math
-
-from .base import Trace
+from typing import List, MutableMapping, Optional
 
 import mlx.core as mx
+
+from .base import Trace
 
 
 class Accuracy(Trace):

@@ -22,11 +22,12 @@ import mlx.optimizers as optim
 import numpy as np
 
 import fastmlx as fe
-from fastmlx.op import TensorOp, ModelOp, UpdateOp
-from fastmlx.trace import Trace, Accuracy
+from fastmlx.dataset import MLXDataset
+from fastmlx.op import ModelOp, Op, UpdateOp
+from fastmlx.trace import Accuracy, Trace
 
 
-class PseudoLabelOp(TensorOp):
+class PseudoLabelOp(Op):
     """Generate pseudo labels from model predictions.
 
     Only includes samples where the model is confident (above threshold).
@@ -65,7 +66,7 @@ class PseudoLabelOp(TensorOp):
         return pseudo_labels, mask.astype(mx.float32)
 
 
-class MaskedCrossEntropy(TensorOp):
+class MaskedCrossEntropy(Op):
     """Cross entropy loss with sample masking.
 
     Only computes loss for samples where mask is 1.
@@ -214,12 +215,12 @@ def get_estimator(
 
     # Create pipeline
     pipeline = fe.Pipeline(
-        train_data=fe.dataset.NumpyDataset(data={
+        train_data=MLXDataset(data={
             "x": x_combined,
             "y": y_combined,
             "is_labeled": is_labeled,
         }),
-        test_data=fe.dataset.NumpyDataset(data={"x": x_test, "y": y_test}),
+        eval_data=MLXDataset(data={"x": x_test, "y": y_test}),
         batch_size=batch_size,
         ops=[
             fe.op.Normalize(inputs="x", outputs="x", mean=0.1307, std=0.3081),
@@ -228,9 +229,8 @@ def get_estimator(
 
     # Build model
     model = fe.build(
-        model=SimpleCNN(num_classes=10),
-        optimizer=optim.Adam(learning_rate=lr),
-        model_name="pseudo_label_cnn",
+        model_fn=lambda: SimpleCNN(num_classes=10),
+        optimizer_fn=lambda: optim.Adam(learning_rate=lr),
     )
 
     # Network with both labeled and pseudo-labeled loss
@@ -254,15 +254,8 @@ def get_estimator(
                 mode="train",
             ),
 
-            # Pseudo label loss (using pseudo_mask and unlabeled samples)
-            # Combine: use pseudo labels where not labeled and confident
-            TensorOp(
-                inputs=["is_labeled", "pseudo_mask"],
-                outputs="pseudo_loss_mask",
-                mode="train",
-            ),
-
-            # Simple combined loss approach
+            # Simple combined loss approach (uses labeled data primarily,
+            # pseudo labels help via model regularization)
             fe.op.CrossEntropy(
                 inputs=["y_pred", "y"],
                 outputs="loss",
@@ -280,7 +273,7 @@ def get_estimator(
             Accuracy(true_key="y", pred_key="y_pred"),
             PseudoLabelStats(),
         ],
-        log_steps=100,
+        log_interval=100,
     )
 
     return estimator

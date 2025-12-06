@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import csv
-import os
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import mlx.core as mx
+
+if TYPE_CHECKING:
+    from .mlx_dataset import MLXDataset
 
 
 class CSVDataset:
@@ -125,7 +127,7 @@ class CSVDataset:
             labels = [self.data[self.label_column][i] for i in range(self.size)]
             return MLXDataset({
                 "x": mx.array(features, dtype=self.dtype),
-                "y": mx.array(labels, dtype=mx.int32 if all(isinstance(l, int) for l in labels) else self.dtype)
+                "y": mx.array(labels, dtype=mx.int32 if all(isinstance(label, int) for label in labels) else self.dtype)
             })
         else:
             data = {

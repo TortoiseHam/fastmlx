@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 import tempfile
-from typing import Any, MutableMapping, Tuple
+from typing import Tuple
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -21,14 +21,11 @@ import mlx.nn as nn
 import fastmlx as fe
 from fastmlx.architecture import ResNet9
 from fastmlx.dataset.data import cifair10
-from fastmlx.op import (
-    Normalize, RandomCrop, HorizontalFlip, ColorJitter,
-    GaussianBlur, PadIfNeeded, Sometimes, Op
-)
+from fastmlx.op import ColorJitter, HorizontalFlip, Normalize, Op, PadIfNeeded, RandomCrop, Sometimes
 from fastmlx.schedule import warmup_cosine_decay
+from fastmlx.trace.adapt import LRScheduler
 from fastmlx.trace.base import Trace
 from fastmlx.trace.io import ModelSaver
-from fastmlx.trace.adapt import LRScheduler
 
 
 class SimCLRProjector(nn.Module):

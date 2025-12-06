@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Tuple, List
+from typing import List, Tuple
 
-import mlx.nn as nn
 import mlx.core as mx
+import mlx.nn as nn
 
 
 class ConvBlock(nn.Module):

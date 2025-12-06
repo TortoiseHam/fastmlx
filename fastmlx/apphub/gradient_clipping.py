@@ -21,11 +21,12 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 
 import fastmlx as fe
-from fastmlx.op import TensorOp, ModelOp
+from fastmlx.dataset import MLXDataset
+from fastmlx.op import ModelOp, Op
 from fastmlx.trace import Trace
 
 
-class GradientClipUpdateOp(TensorOp):
+class GradientClipUpdateOp(Op):
     """Update operation with gradient clipping.
 
     Args:
@@ -51,7 +52,8 @@ class GradientClipUpdateOp(TensorOp):
 
     def forward(self, data: list[mx.array], state: dict[str, Any]) -> None:
         """Compute gradients, clip them, and update model."""
-        loss = data[0] if isinstance(data, list) else data
+        # Loss is passed in but we get gradients from model.current_grads
+        _ = data[0] if isinstance(data, list) else data
 
         # Get gradients
         grads = self.model.current_grads
@@ -224,16 +226,15 @@ def get_estimator(
 
     # Create pipeline
     pipeline = fe.Pipeline(
-        train_data=fe.dataset.NumpyDataset(data={"x": x_train, "y": y_train}),
-        test_data=fe.dataset.NumpyDataset(data={"x": x_test, "y": y_test}),
+        train_data=MLXDataset(data={"x": x_train, "y": y_train}),
+        eval_data=MLXDataset(data={"x": x_test, "y": y_test}),
         batch_size=batch_size,
     )
 
     # Build model
     model = fe.build(
-        model=SimpleRNN(vocab_size=vocab_size),
-        optimizer=optim.SGD(learning_rate=lr),  # SGD can have gradient issues
-        model_name="rnn",
+        model_fn=lambda: SimpleRNN(vocab_size=vocab_size),
+        optimizer_fn=lambda: optim.SGD(learning_rate=lr),  # SGD can have gradient issues
     )
 
     # Create network with gradient clipping
@@ -258,7 +259,7 @@ def get_estimator(
         traces=[
             GradientMonitor(model=model),
         ],
-        log_steps=50,
+        log_interval=50,
     )
 
     return estimator

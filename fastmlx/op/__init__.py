@@ -1,49 +1,49 @@
 """Operation classes used within FastMLX."""
 
-from .op import Op
-
-# Utility Ops
-from .lambda_op import LambdaOp, Delete, RemoveIf, Reshape, Cast, Squeeze, Clip
-
-# Basic Preprocessing Ops
-from .expand_dims import ExpandDims
-from .minmax import Minmax
-from .normalize import Normalize
-from .pad_if_needed import PadIfNeeded
-from .onehot import Onehot
-from .sometimes import Sometimes
-
-# Geometric Augmentation Ops
-from .random_crop import RandomCrop
-from .horizontal_flip import HorizontalFlip
-from .vertical_flip import VerticalFlip
-from .rotate import Rotate, Rotate90
-from .resize import Resize, RandomResizedCrop, CenterCrop
+from .brightness_contrast import Brightness, Contrast, RandomBrightnessContrast
 
 # Pixel-level Augmentation Ops
 from .coarse_dropout import CoarseDropout
-from .gaussian_blur import GaussianBlur
-from .gaussian_noise import GaussianNoise
-from .brightness_contrast import Brightness, Contrast, RandomBrightnessContrast
 from .color_jitter import ColorJitter, ToGray
-from .cutout import Cutout, GridMask, MixUp
-from .random_erasing import RandomErasing, GridDropout, ChannelDropout
-from .elastic_transform import ElasticTransform, PerspectiveTransform, ShearTransform
 
 # Loss Ops
 from .cross_entropy import CrossEntropy
-from .mean_squared_error import MeanSquaredError
-from .l1_loss import L1Loss
-from .focal_loss import FocalLoss
+from .cutout import Cutout, GridMask, MixUp
 from .dice_loss import DiceLoss
+from .elastic_transform import ElasticTransform, PerspectiveTransform, ShearTransform
+
+# Basic Preprocessing Ops
+from .expand_dims import ExpandDims
+from .focal_loss import FocalLoss
+from .gaussian_blur import GaussianBlur
+from .gaussian_noise import GaussianNoise
 from .hinge_loss import HingeLoss
-from .smooth_l1_loss import SmoothL1Loss
+from .horizontal_flip import HorizontalFlip
+from .l1_loss import L1Loss
 from .label_smoothing import LabelSmoothingCrossEntropy, WeightedCrossEntropy
-from .metric_loss import TripletLoss, ContrastiveLoss, CenterLoss, CosineSimilarityLoss
+
+# Utility Ops
+from .lambda_op import Cast, Clip, Delete, LambdaOp, RemoveIf, Reshape, Squeeze
+from .mean_squared_error import MeanSquaredError
+from .metric_loss import CenterLoss, ContrastiveLoss, CosineSimilarityLoss, TripletLoss
+from .minmax import Minmax
 
 # Model Ops
 from .model_op import ModelOp
+from .normalize import Normalize
+from .onehot import Onehot
+from .op import Op
+from .pad_if_needed import PadIfNeeded
+
+# Geometric Augmentation Ops
+from .random_crop import RandomCrop
+from .random_erasing import ChannelDropout, GridDropout, RandomErasing
+from .resize import CenterCrop, RandomResizedCrop, Resize
+from .rotate import Rotate, Rotate90
+from .smooth_l1_loss import SmoothL1Loss
+from .sometimes import Sometimes
 from .update_op import UpdateOp
+from .vertical_flip import VerticalFlip
 
 __all__ = [
     # Base

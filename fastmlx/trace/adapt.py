@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, MutableMapping, Optional
 import math
+from typing import Callable, MutableMapping, Optional
 
 from .base import Trace
 
@@ -100,7 +100,7 @@ class EarlyStopping(Trace):
                 state['should_stop'] = True
                 print(f"FastMLX-EarlyStopping: Stopping training at epoch {epoch}")
                 if self.restore_best_weights and self.best_weights is not None:
-                    print(f"FastMLX-EarlyStopping: Restoring best weights")
+                    print("FastMLX-EarlyStopping: Restoring best weights")
                     if hasattr(state.get('model'), 'load_weights'):
                         state['model'].update(self.best_weights)
 

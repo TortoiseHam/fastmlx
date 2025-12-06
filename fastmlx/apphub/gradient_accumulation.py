@@ -16,22 +16,14 @@ from __future__ import annotations
 
 import argparse
 import tempfile
-from typing import Any, MutableMapping
 
 import mlx.core as mx
 import mlx.nn as nn
 
-import fastmlx as fe
 from fastmlx.architecture import ResNet9
 from fastmlx.dataset.data import cifair10
-from fastmlx.op import (
-    Normalize, PadIfNeeded, RandomCrop, HorizontalFlip,
-    Onehot, Sometimes, CrossEntropy, ModelOp, Op
-)
+from fastmlx.op import Op
 from fastmlx.schedule import warmup_cosine_decay
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
-from fastmlx.trace.adapt import LRScheduler
 
 
 class GradientAccumulationUpdateOp(Op):
@@ -95,7 +87,7 @@ def train_with_accumulation(
         save_dir: Directory to save models.
     """
     effective_batch_size = mini_batch_size * accumulation_steps
-    print(f"Training with Gradient Accumulation")
+    print("Training with Gradient Accumulation")
     print(f"  Mini-batch size: {mini_batch_size}")
     print(f"  Accumulation steps: {accumulation_steps}")
     print(f"  Effective batch size: {effective_batch_size}")

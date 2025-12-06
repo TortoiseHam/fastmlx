@@ -22,15 +22,15 @@ Example usage:
 
 import argparse
 from typing import Any
-import copy
 
 import mlx.core as mx
 import mlx.nn as nn
 import mlx.optimizers as optim
 
 import fastmlx as fe
+from fastmlx.dataset import MLXDataset
 from fastmlx.op import ModelOp, UpdateOp
-from fastmlx.trace import Trace, Accuracy
+from fastmlx.trace import Accuracy, Trace
 
 
 class SWATrace(Trace):
@@ -186,8 +186,8 @@ def get_estimator(
 
     # Create pipeline
     pipeline = fe.Pipeline(
-        train_data=fe.dataset.NumpyDataset(data={"x": train_data[0], "y": train_data[1]}),
-        test_data=fe.dataset.NumpyDataset(data={"x": test_data[0], "y": test_data[1]}),
+        train_data=MLXDataset(data={"x": train_data[0], "y": train_data[1]}),
+        eval_data=MLXDataset(data={"x": test_data[0], "y": test_data[1]}),
         batch_size=batch_size,
         ops=[
             fe.op.Normalize(inputs="x", outputs="x", mean=0.1307, std=0.3081),
@@ -196,9 +196,8 @@ def get_estimator(
 
     # Build model with cosine annealing LR
     model = fe.build(
-        model=SimpleCNN(num_classes=10),
-        optimizer=optim.SGD(learning_rate=lr, momentum=0.9, weight_decay=1e-4),
-        model_name="swa_cnn",
+        model_fn=lambda: SimpleCNN(num_classes=10),
+        optimizer_fn=lambda: optim.SGD(learning_rate=lr, momentum=0.9, weight_decay=1e-4),
     )
 
     network = fe.Network(
@@ -222,7 +221,7 @@ def get_estimator(
             ),
             Accuracy(true_key="y", pred_key="y_pred"),
         ],
-        log_steps=100,
+        log_interval=100,
     )
 
     return estimator

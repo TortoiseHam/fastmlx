@@ -23,7 +23,6 @@ import mlx.nn as nn
 
 from fastmlx.architecture import ResNet9
 from fastmlx.dataset.data import cifair10
-from fastmlx.op import Normalize
 
 
 def lr_finder(

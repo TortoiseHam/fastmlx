@@ -10,10 +10,9 @@ Reference:
 from __future__ import annotations
 
 import argparse
+import os
 import tempfile
 import urllib.request
-import os
-from typing import Any, MutableMapping
 
 import mlx.core as mx
 
@@ -22,10 +21,9 @@ from fastmlx.architecture import GPT
 from fastmlx.dataset import MLXDataset
 from fastmlx.op import Op
 from fastmlx.schedule import warmup_cosine_decay
+from fastmlx.trace.adapt import LRScheduler
 from fastmlx.trace.base import Trace
 from fastmlx.trace.io import ModelSaver
-from fastmlx.trace.adapt import LRScheduler
-
 
 # Shakespeare dataset URL
 SHAKESPEARE_URL = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
@@ -39,7 +37,7 @@ def download_shakespeare(cache_dir: str = None) -> str:
 
     filepath = os.path.join(cache_dir, "shakespeare.txt")
     if not os.path.exists(filepath):
-        print(f"Downloading Shakespeare dataset...")
+        print("Downloading Shakespeare dataset...")
         urllib.request.urlretrieve(SHAKESPEARE_URL, filepath)
         print(f"Downloaded to {filepath}")
 

@@ -10,11 +10,10 @@ low-precision matrix units, so speedups are less dramatic.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional
+
 import mlx.core as mx
 import mlx.nn as nn
-
 
 # Supported dtypes for mixed precision
 HALF_DTYPES = (mx.float16, mx.bfloat16)

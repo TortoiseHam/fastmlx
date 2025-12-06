@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import List, Optional, Sequence
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 from plotly.graph_objects import Figure, Image
 from plotly.subplots import make_subplots
-
 
 Array = mx.array
 

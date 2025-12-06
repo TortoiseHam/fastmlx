@@ -18,9 +18,8 @@ from __future__ import annotations
 
 import argparse
 import tempfile
-from typing import Any, MutableMapping, Tuple
+from typing import Tuple
 
-import numpy as np
 import mlx.core as mx
 import mlx.nn as nn
 
@@ -28,9 +27,9 @@ import fastmlx as fe
 from fastmlx.dataset import MLXDataset
 from fastmlx.op import Minmax, Op
 from fastmlx.schedule import cosine_decay
+from fastmlx.trace.adapt import LRScheduler
 from fastmlx.trace.base import Trace
 from fastmlx.trace.io import ModelSaver
-from fastmlx.trace.adapt import LRScheduler
 
 
 class MultiTaskModel(nn.Module):

@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, MutableMapping, Optional, Union
 import math
 import time
+from typing import Any, Iterable, List, MutableMapping, Optional, Union
 
 import mlx.core as mx
 
-from .pipeline import Pipeline
-from .network import Network
 from .backend.amp import AMPConfig, GradScaler, cast_to_dtype
+from .network import Network
+from .pipeline import Pipeline
 
 
 class Estimator:

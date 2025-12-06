@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, MutableMapping, Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 from .op import Op
 

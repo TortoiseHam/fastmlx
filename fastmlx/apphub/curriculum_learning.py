@@ -20,21 +20,14 @@ from __future__ import annotations
 
 import argparse
 import tempfile
-from typing import Any, MutableMapping, Tuple
+from typing import Tuple
 
-import numpy as np
 import mlx.core as mx
 import mlx.nn as nn
+import numpy as np
 
-import fastmlx as fe
 from fastmlx.architecture import LeNet
-from fastmlx.dataset import MLXDataset
 from fastmlx.dataset.data import mnist
-from fastmlx.op import Minmax, CrossEntropy, ModelOp, UpdateOp
-from fastmlx.schedule import cosine_decay
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
-from fastmlx.trace.adapt import LRScheduler
 
 
 def compute_sample_difficulty(
@@ -148,7 +141,7 @@ def train_with_curriculum(
         pretrain_epochs: Epochs to pretrain for difficulty estimation.
         save_dir: Directory to save model.
     """
-    print(f"Curriculum Learning on MNIST")
+    print("Curriculum Learning on MNIST")
     print(f"  Curriculum type: {curriculum_type}")
     print(f"  Pre-train epochs: {pretrain_epochs}")
 

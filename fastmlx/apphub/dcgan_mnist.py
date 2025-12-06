@@ -13,17 +13,14 @@ from __future__ import annotations
 
 import argparse
 import tempfile
-from typing import Any, MutableMapping
 
 import mlx.core as mx
 import mlx.nn as nn
 
-import fastmlx as fe
-from fastmlx.architecture.gan import SimpleGenerator, SimpleDiscriminator
+from fastmlx.architecture.gan import SimpleDiscriminator, SimpleGenerator
 from fastmlx.dataset.data import mnist
-from fastmlx.op import Minmax, Op
+from fastmlx.op import Op
 from fastmlx.trace.base import Trace
-from fastmlx.trace.io import ModelSaver
 
 
 class GeneratorOp(Op):
@@ -221,7 +218,7 @@ def train_gan(
     num_samples = images.shape[0]
     num_batches = num_samples // batch_size
 
-    print(f"Training DCGAN on MNIST")
+    print("Training DCGAN on MNIST")
     print(f"  Epochs: {epochs}")
     print(f"  Batch size: {batch_size}")
     print(f"  Latent dim: {latent_dim}")

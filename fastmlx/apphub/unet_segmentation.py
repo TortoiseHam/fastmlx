@@ -14,17 +14,17 @@ import argparse
 import tempfile
 from typing import Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 import fastmlx as fe
 from fastmlx.architecture import UNet
 from fastmlx.dataset import MLXDataset
-from fastmlx.op import Minmax, DiceLoss, ModelOp, UpdateOp, HorizontalFlip, VerticalFlip, Sometimes
+from fastmlx.op import DiceLoss, HorizontalFlip, Minmax, ModelOp, Sometimes, UpdateOp, VerticalFlip
 from fastmlx.schedule import warmup_cosine_decay
-from fastmlx.trace.metric import Dice
-from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Dice
 
 
 def generate_synthetic_data(

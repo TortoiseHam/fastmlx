@@ -19,17 +19,17 @@ import argparse
 import tempfile
 from typing import Tuple
 
-import numpy as np
 import mlx.core as mx
 import mlx.nn as nn
+import numpy as np
 
 import fastmlx as fe
 from fastmlx.dataset import MLXDataset
-from fastmlx.op import MeanSquaredError, ModelOp, UpdateOp, Op
+from fastmlx.op import MeanSquaredError, ModelOp, UpdateOp
 from fastmlx.schedule import cosine_decay
+from fastmlx.trace.adapt import LRScheduler
 from fastmlx.trace.base import Trace
 from fastmlx.trace.io import ModelSaver
-from fastmlx.trace.adapt import LRScheduler
 
 
 class LSTMForecaster(nn.Module):
@@ -352,21 +352,30 @@ def get_estimator(
     input_dim = series.shape[1]
     output_dim = input_dim
 
-    if model_type == "lstm":
-        model_fn = lambda: LSTMForecaster(
+    def make_lstm():
+        return LSTMForecaster(
             input_dim=input_dim, hidden_dim=64, num_layers=2,
             output_dim=output_dim, forecast_horizon=forecast_horizon
         )
-    elif model_type == "transformer":
-        model_fn = lambda: TransformerForecaster(
+
+    def make_transformer():
+        return TransformerForecaster(
             input_dim=input_dim, d_model=64, num_heads=4, num_layers=2,
             output_dim=output_dim, forecast_horizon=forecast_horizon
         )
-    else:  # mlp
-        model_fn = lambda: MLPForecaster(
+
+    def make_mlp():
+        return MLPForecaster(
             input_dim=input_dim, window_size=window_size, hidden_dim=128,
             output_dim=output_dim, forecast_horizon=forecast_horizon
         )
+
+    if model_type == "lstm":
+        model_fn = make_lstm
+    elif model_type == "transformer":
+        model_fn = make_transformer
+    else:  # mlp
+        model_fn = make_mlp
 
     print(f"Using {model_type.upper()} model")
 

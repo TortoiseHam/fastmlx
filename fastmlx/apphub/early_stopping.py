@@ -18,15 +18,14 @@ import tempfile
 import fastmlx as fe
 from fastmlx.architecture import LeNet
 from fastmlx.dataset.data import mnist
-from fastmlx.op import Minmax, CrossEntropy, ModelOp, UpdateOp
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
+from fastmlx.op import CrossEntropy, Minmax, ModelOp, UpdateOp
 from fastmlx.trace.adapt import (
     EarlyStopping,
     ReduceLROnPlateau,
     TerminateOnNaN,
-    LRScheduler,
 )
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Accuracy
 
 
 def get_estimator(

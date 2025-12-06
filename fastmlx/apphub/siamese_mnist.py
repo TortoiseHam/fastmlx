@@ -14,18 +14,18 @@ import argparse
 import tempfile
 from typing import Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 import fastmlx as fe
 from fastmlx.architecture import SiameseEncoder
 from fastmlx.dataset import MLXDataset
 from fastmlx.dataset.data import mnist
-from fastmlx.op import Minmax, ContrastiveLoss, ModelOp, UpdateOp, Op
+from fastmlx.op import ContrastiveLoss, Minmax, Op, UpdateOp
 from fastmlx.schedule import cosine_decay
-from fastmlx.trace.base import Trace
-from fastmlx.trace.io import BestModelSaver, ModelSaver
 from fastmlx.trace.adapt import LRScheduler
+from fastmlx.trace.base import Trace
+from fastmlx.trace.io import ModelSaver
 
 
 class SiameseModelOp(Op):

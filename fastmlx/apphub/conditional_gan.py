@@ -24,7 +24,8 @@ import mlx.optimizers as optim
 import numpy as np
 
 import fastmlx as fe
-from fastmlx.op import TensorOp, ModelOp, UpdateOp
+from fastmlx.dataset import MLXDataset
+from fastmlx.op import Op
 from fastmlx.trace import Trace
 
 
@@ -127,7 +128,7 @@ class ConditionalDiscriminator(nn.Module):
         return x
 
 
-class GenerateNoiseOp(TensorOp):
+class GenerateNoiseOp(Op):
     """Generate random noise for generator."""
 
     def __init__(
@@ -145,7 +146,7 @@ class GenerateNoiseOp(TensorOp):
         return mx.random.normal(shape=(batch_size, self.latent_dim))
 
 
-class GANLossOp(TensorOp):
+class GANLossOp(Op):
     """Binary cross entropy loss for GAN training."""
 
     def __init__(
@@ -177,7 +178,7 @@ class GANLossOp(TensorOp):
         return loss
 
 
-class cGANTrainingOp(TensorOp):
+class cGANTrainingOp(Op):
     """Training operation for conditional GAN.
 
     Handles alternating generator/discriminator updates.
@@ -310,7 +311,7 @@ def get_estimator(
 
     # Create pipeline
     pipeline = fe.Pipeline(
-        train_data=fe.dataset.NumpyDataset(data={"x": train_data[0], "y": train_data[1]}),
+        train_data=MLXDataset(data={"x": train_data[0], "y": train_data[1]}),
         batch_size=batch_size,
         ops=[
             fe.op.Normalize(inputs="x", outputs="x", mean=0.0, std=1.0),
@@ -319,15 +320,13 @@ def get_estimator(
 
     # Build generator and discriminator
     generator = fe.build(
-        model=ConditionalGenerator(latent_dim=latent_dim),
-        optimizer=optim.Adam(learning_rate=lr, betas=[0.5, 0.999]),
-        model_name="generator",
+        model_fn=lambda: ConditionalGenerator(latent_dim=latent_dim),
+        optimizer_fn=lambda: optim.Adam(learning_rate=lr, betas=[0.5, 0.999]),
     )
 
     discriminator = fe.build(
-        model=ConditionalDiscriminator(),
-        optimizer=optim.Adam(learning_rate=lr, betas=[0.5, 0.999]),
-        model_name="discriminator",
+        model_fn=lambda: ConditionalDiscriminator(),
+        optimizer_fn=lambda: optim.Adam(learning_rate=lr, betas=[0.5, 0.999]),
     )
 
     # Create network with custom training op
@@ -348,7 +347,7 @@ def get_estimator(
         traces=[
             GANMonitor(generator=generator, latent_dim=latent_dim),
         ],
-        log_steps=100,
+        log_interval=100,
     )
 
     return estimator

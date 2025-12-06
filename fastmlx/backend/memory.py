@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import mlx.core as mx
-
 
 # Track peak memory usage (simulated since MLX doesn't expose this directly)
 _peak_memory_bytes: int = 0

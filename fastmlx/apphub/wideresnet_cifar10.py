@@ -13,25 +13,24 @@ import argparse
 import tempfile
 
 import fastmlx as fe
-from fastmlx.architecture import WideResNet28_10, WideResNet16_8, WideResNet40_4
+from fastmlx.architecture import WideResNet16_8, WideResNet28_10, WideResNet40_4
 from fastmlx.dataset.data import cifair10
 from fastmlx.op import (
+    CoarseDropout,
+    CrossEntropy,
+    HorizontalFlip,
+    ModelOp,
     Normalize,
+    Onehot,
     PadIfNeeded,
     RandomCrop,
-    HorizontalFlip,
-    CoarseDropout,
-    Onehot,
     Sometimes,
-    CrossEntropy,
-    ModelOp,
     UpdateOp,
 )
 from fastmlx.schedule import warmup_cosine_decay
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
-
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Accuracy
 
 ARCHITECTURES = {
     "wrn-16-8": WideResNet16_8,
@@ -94,7 +93,7 @@ def get_estimator(
     # Build WideResNet model
     model_class = ARCHITECTURES[architecture]
     model = fe.build(
-        model_fn=lambda: model_class(num_classes=10, input_shape=(3, 32, 32)),
+        model_fn=lambda: model_class(classes=10, input_shape=(3, 32, 32)),
         optimizer_fn="adam"
     )
 

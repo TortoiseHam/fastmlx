@@ -27,7 +27,8 @@ import mlx.optimizers as optim
 import numpy as np
 
 import fastmlx as fe
-from fastmlx.op import TensorOp, ModelOp, UpdateOp
+from fastmlx.dataset import MLXDataset
+from fastmlx.op import ModelOp, Op, UpdateOp
 from fastmlx.trace import Trace
 
 
@@ -76,7 +77,7 @@ class ConvAutoencoder(nn.Module):
         return self.decode(z)
 
 
-class ReconstructionLoss(TensorOp):
+class ReconstructionLoss(Op):
     """Compute reconstruction loss (MSE)."""
 
     def __init__(
@@ -93,7 +94,7 @@ class ReconstructionLoss(TensorOp):
         return mx.mean((x - x_recon) ** 2)
 
 
-class AnomalyScoreOp(TensorOp):
+class AnomalyScoreOp(Op):
     """Compute per-sample anomaly scores."""
 
     def __init__(
@@ -226,11 +227,11 @@ def get_estimator(
 
     # Create pipeline
     pipeline = fe.Pipeline(
-        train_data=fe.dataset.NumpyDataset(data={
+        train_data=MLXDataset(data={
             "x": x_train_normal,
             "y": y_train_normal,
         }),
-        test_data=fe.dataset.NumpyDataset(data={
+        eval_data=MLXDataset(data={
             "x": x_test,
             "y": y_test,
             "is_anomaly": is_anomaly,
@@ -244,9 +245,8 @@ def get_estimator(
 
     # Build autoencoder
     model = fe.build(
-        model=ConvAutoencoder(latent_dim=latent_dim),
-        optimizer=optim.Adam(learning_rate=lr),
-        model_name="autoencoder",
+        model_fn=lambda: ConvAutoencoder(latent_dim=latent_dim),
+        optimizer_fn=lambda: optim.Adam(learning_rate=lr),
     )
 
     network = fe.Network(
@@ -272,7 +272,7 @@ def get_estimator(
         traces=[
             AnomalyEvaluator(threshold_percentile=threshold_percentile),
         ],
-        log_steps=100,
+        log_interval=100,
     )
 
     return estimator

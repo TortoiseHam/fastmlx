@@ -23,11 +23,11 @@ import mlx.nn as nn
 import fastmlx as fe
 from fastmlx.architecture import LeNet
 from fastmlx.dataset.data import mnist
-from fastmlx.op import Minmax, CrossEntropy, ModelOp, UpdateOp, Op
+from fastmlx.op import Minmax, ModelOp, Op, UpdateOp
 from fastmlx.schedule import cosine_decay
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Accuracy
 
 
 class FGSMAttack(Op):

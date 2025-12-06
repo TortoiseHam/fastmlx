@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional
 
 from .search import Search
 
@@ -69,7 +69,7 @@ class RandomSearch(Search):
         elif isinstance(spec, tuple) and len(spec) == 2:
             # Uniform continuous range
             low, high = spec
-            return lambda l=low, h=high: random.uniform(l, h)
+            return lambda lo=low, hi=high: random.uniform(lo, hi)
 
         elif isinstance(spec, dict):
             dist = spec.get("distribution", "uniform")
@@ -77,7 +77,7 @@ class RandomSearch(Search):
             if dist == "uniform":
                 low = spec.get("low", 0.0)
                 high = spec.get("high", 1.0)
-                return lambda l=low, h=high: random.uniform(l, h)
+                return lambda lo=low, hi=high: random.uniform(lo, hi)
 
             elif dist == "log_uniform":
                 import math
@@ -90,7 +90,7 @@ class RandomSearch(Search):
             elif dist == "int_uniform":
                 low = spec.get("low", 0)
                 high = spec.get("high", 100)
-                return lambda l=low, h=high: random.randint(l, h)
+                return lambda lo=low, hi=high: random.randint(lo, hi)
 
             elif dist == "choice":
                 options = spec.get("options", [])

@@ -4,24 +4,26 @@ from __future__ import annotations
 
 import argparse
 import tempfile
+
 import fastmlx as fe
 from fastmlx.architecture import ResNet9
 from fastmlx.dataset.data import cifair10
 from fastmlx.op import (
+    CoarseDropout,
+    CrossEntropy,
+    HorizontalFlip,
+    ModelOp,
     Normalize,
+    Onehot,
     PadIfNeeded,
     RandomCrop,
-    HorizontalFlip,
-    CoarseDropout,
-    Onehot,
     Sometimes,
-    CrossEntropy,
-    ModelOp,
     UpdateOp,
 )
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Accuracy
+
 
 def lr_schedule(step):
     if step <= 490:

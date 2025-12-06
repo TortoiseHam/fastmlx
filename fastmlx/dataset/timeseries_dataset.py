@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import os
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import mlx.core as mx
 
@@ -84,7 +83,7 @@ class TimeSeriesDataset:
         data = []
         with open(path, "r") as f:
             reader = csv.reader(f)
-            header = next(reader, None)  # Skip header if present
+            _ = next(reader, None)  # Skip header if present
 
             for row in reader:
                 try:

@@ -11,8 +11,8 @@ import zipfile
 from pathlib import Path
 from typing import Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 from ..mlx_dataset import MLXDataset
 

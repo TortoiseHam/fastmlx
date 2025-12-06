@@ -7,7 +7,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -70,7 +70,7 @@ class SearchResults:
         lines = [
             f"Search ID: {self.search_id}",
             f"Best Score: {self.best_score:.6f} ({'max' if self.maximize else 'min'})",
-            f"Best Parameters:",
+            "Best Parameters:",
         ]
         for k, v in self.best_params.items():
             lines.append(f"  {k}: {v}")

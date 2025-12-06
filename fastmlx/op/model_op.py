@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, MutableMapping
 
-import mlx.nn as nn
 import mlx.core as mx
+import mlx.nn as nn
 
 from .op import Op
 

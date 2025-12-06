@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, MutableMapping, List, Optional, Union, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, List, MutableMapping, Optional, Union
 
-import mlx.nn as nn
 import mlx.core as mx
+import mlx.nn as nn
 
 from .op import Op
 
@@ -93,8 +93,8 @@ class UpdateOp(Op):
 
         if not hasattr(self.model, 'optimizer'):
             raise ValueError(
-                f"UpdateOp requires model to have an 'optimizer' attribute. "
-                f"Set model.optimizer = optim.SGD(...) before training."
+                "UpdateOp requires model to have an 'optimizer' attribute. "
+                "Set model.optimizer = optim.SGD(...) before training."
             )
 
         self._state = [self.model.state, self.model.optimizer.state, mx.random.state]
@@ -112,7 +112,7 @@ class UpdateOp(Op):
         if self.loss_fn is not None:
             # Use custom loss function - need to do forward pass
             input_keys = self.inputs if isinstance(self.inputs, list) else [self.inputs]
-            output_keys = self.outputs if isinstance(self.outputs, list) else [self.outputs]
+            # output_keys not needed for custom loss forward pass
 
             # Get input data
             if len(input_keys) == 1:

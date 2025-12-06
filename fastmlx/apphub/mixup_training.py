@@ -19,21 +19,21 @@ import fastmlx as fe
 from fastmlx.architecture import ResNet9
 from fastmlx.dataset.data import cifair10
 from fastmlx.op import (
-    Normalize,
-    PadIfNeeded,
-    RandomCrop,
+    CrossEntropy,
     HorizontalFlip,
     MixUp,
-    Onehot,
-    Sometimes,
-    CrossEntropy,
     ModelOp,
+    Normalize,
+    Onehot,
+    PadIfNeeded,
+    RandomCrop,
+    Sometimes,
     UpdateOp,
 )
 from fastmlx.schedule import warmup_cosine_decay
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Accuracy
 
 
 def get_estimator(

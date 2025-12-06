@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import argparse
 import tempfile
-from typing import Any, MutableMapping, Tuple
+from typing import Tuple
 
 import mlx.core as mx
 import numpy as np
@@ -24,13 +24,21 @@ import fastmlx as fe
 from fastmlx.architecture import ResNet9
 from fastmlx.dataset.data import cifair10
 from fastmlx.op import (
-    Normalize, PadIfNeeded, RandomCrop, HorizontalFlip,
-    Onehot, Sometimes, CrossEntropy, ModelOp, UpdateOp, Op
+    CrossEntropy,
+    HorizontalFlip,
+    ModelOp,
+    Normalize,
+    Onehot,
+    Op,
+    PadIfNeeded,
+    RandomCrop,
+    Sometimes,
+    UpdateOp,
 )
 from fastmlx.schedule import warmup_cosine_decay
-from fastmlx.trace.metric import Accuracy
-from fastmlx.trace.io import BestModelSaver
 from fastmlx.trace.adapt import LRScheduler
+from fastmlx.trace.io import BestModelSaver
+from fastmlx.trace.metric import Accuracy
 
 
 class CutMix(Op):
