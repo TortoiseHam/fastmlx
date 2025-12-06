@@ -194,7 +194,7 @@ class Summary:
 
         for metric, entries in self.history.items():
             if entries:
-                values = [e["value"] for e in entries]
+                # all_values = [e["value"] for e in entries]  # Unused
                 train_values = [e["value"] for e in entries if e.get("mode") == "train"]
                 eval_values = [e["value"] for e in entries if e.get("mode") == "eval"]
 

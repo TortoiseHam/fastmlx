@@ -137,6 +137,7 @@ version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "mlx" },
+    { name = "mlx-data", marker = "sys_platform == 'darwin'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "tqdm" },
@@ -144,12 +145,8 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
-    { name = "mlx-data" },
     { name = "pillow" },
     { name = "plotly" },
-]
-data = [
-    { name = "mlx-data" },
 ]
 dev = [
     { name = "mypy" },
@@ -164,9 +161,9 @@ viz = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastmlx", extras = ["data", "viz"], marker = "extra == 'all'" },
+    { name = "fastmlx", extras = ["viz"], marker = "extra == 'all'" },
     { name = "mlx", specifier = ">=0.30.0" },
-    { name = "mlx-data", marker = "extra == 'data'", specifier = ">=0.0.3" },
+    { name = "mlx-data", marker = "sys_platform == 'darwin'", specifier = ">=0.0.3" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.0" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pillow", marker = "extra == 'viz'", specifier = ">=10.0.0" },
@@ -176,7 +173,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "tqdm", specifier = ">=4.66.0" },
 ]
-provides-extras = ["dev", "data", "viz", "all"]
+provides-extras = ["dev", "viz", "all"]
 
 [[package]]
 name = "iniconfig"

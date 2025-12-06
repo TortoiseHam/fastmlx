@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any, MutableMapping, List, Optional, Union, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, List, MutableMapping, Optional, Union
 
-import mlx.nn as nn
 import mlx.core as mx
+import mlx.nn as nn
 
 from .op import Op
 
 if TYPE_CHECKING:
     from ..backend.amp import GradScaler
 
-Array = mx.array
 
 
 class UpdateOp(Op):
@@ -93,8 +92,8 @@ class UpdateOp(Op):
 
         if not hasattr(self.model, 'optimizer'):
             raise ValueError(
-                f"UpdateOp requires model to have an 'optimizer' attribute. "
-                f"Set model.optimizer = optim.SGD(...) before training."
+                "UpdateOp requires model to have an 'optimizer' attribute. "
+                "Set model.optimizer = optim.SGD(...) before training."
             )
 
         self._state = [self.model.state, self.model.optimizer.state, mx.random.state]
@@ -112,7 +111,7 @@ class UpdateOp(Op):
         if self.loss_fn is not None:
             # Use custom loss function - need to do forward pass
             input_keys = self.inputs if isinstance(self.inputs, list) else [self.inputs]
-            output_keys = self.outputs if isinstance(self.outputs, list) else [self.outputs]
+            # output_keys not needed for custom loss forward pass
 
             # Get input data
             if len(input_keys) == 1:
@@ -132,7 +131,7 @@ class UpdateOp(Op):
             loss_val, grads = loss_grad_fn(self.model)
 
         else:
-            # Use pre-computed loss from batch
+            # Use pre-computed loss from batch - need to recompute for gradients
             loss_val = batch.get(self.loss_name)
             if loss_val is None:
                 raise ValueError(
@@ -140,10 +139,6 @@ class UpdateOp(Op):
                     f"Available keys: {list(batch.keys())}. "
                     f"Make sure a loss op runs before UpdateOp."
                 )
-
-            # Ensure loss is a scalar
-            if isinstance(loss_val, mx.array) and loss_val.ndim > 0:
-                loss_val = mx.mean(loss_val)
 
             # Get input for gradient computation
             input_keys = self.inputs if isinstance(self.inputs, list) else [self.inputs]
@@ -160,24 +155,65 @@ class UpdateOp(Op):
                     f"Available keys: {list(batch.keys())}"
                 )
 
+            # Infer the loss function from the loss_name
+            loss_name_lower = self.loss_name.lower()
+            inferred_loss_fn = self._infer_loss_function(loss_name_lower)
+
             # Create loss function that uses the model's forward pass
             def loss_wrapper(model: nn.Module) -> mx.array:
                 pred = model(x)
-                # Recompute the loss to get gradients
-                # We need the prediction to compute gradients through the model
+                # Recompute the loss to get gradients through the model
                 if y is not None:
-                    # Use cross entropy as default if we have targets
-                    loss = nn.losses.cross_entropy(pred, y)
-                    return mx.mean(loss)
+                    loss = inferred_loss_fn(pred, y)
+                    return mx.mean(loss) if loss.ndim > 0 else loss
                 else:
-                    # If no targets, use MSE with stored loss as target
-                    # This is a fallback and may not work well
-                    return loss_val
+                    # If no targets, just return the pre-computed loss
+                    # Note: gradients won't flow through the model in this case
+                    return loss_val if isinstance(loss_val, mx.array) else mx.array(loss_val)
 
             loss_grad_fn = nn.value_and_grad(self.model, loss_wrapper)
             loss_val, grads = loss_grad_fn(self.model)
 
         return loss_val, grads
+
+    def _infer_loss_function(self, loss_name: str) -> Callable:
+        """Infer the loss function from the loss key name.
+
+        Args:
+            loss_name: The lowercase name of the loss key.
+
+        Returns:
+            A loss function that takes (predictions, targets) and returns loss.
+        """
+        # Map common loss names to their implementations
+        if any(keyword in loss_name for keyword in ["ce", "cross_entropy", "crossentropy"]):
+            return nn.losses.cross_entropy
+        elif any(keyword in loss_name for keyword in ["mse", "mean_squared", "l2"]):
+            return lambda pred, y: mx.mean((pred - y) ** 2, axis=-1)
+        elif any(keyword in loss_name for keyword in ["mae", "l1", "mean_absolute"]):
+            return lambda pred, y: mx.mean(mx.abs(pred - y), axis=-1)
+        elif "bce" in loss_name or "binary_cross" in loss_name:
+            return nn.losses.binary_cross_entropy
+        elif "focal" in loss_name:
+            # Focal loss with default gamma=2
+            def focal_loss(pred: mx.array, y: mx.array, gamma: float = 2.0) -> mx.array:
+                ce = nn.losses.cross_entropy(pred, y, reduction="none")
+                pt = mx.exp(-ce)
+                return ((1 - pt) ** gamma) * ce
+            return focal_loss
+        elif "dice" in loss_name:
+            # Dice loss for segmentation
+            def dice_loss(pred: mx.array, y: mx.array, smooth: float = 1.0) -> mx.array:
+                pred_soft = mx.softmax(pred, axis=-1)
+                intersection = mx.sum(pred_soft * y, axis=-1)
+                union = mx.sum(pred_soft, axis=-1) + mx.sum(y, axis=-1)
+                return 1 - (2 * intersection + smooth) / (union + smooth)
+            return dice_loss
+        elif "hinge" in loss_name:
+            return lambda pred, y: mx.mean(mx.maximum(0, 1 - y * pred), axis=-1)
+        else:
+            # Default to cross entropy for classification tasks
+            return nn.losses.cross_entropy
 
     def _clip_gradients(self, grads: dict) -> dict:
         """Clip gradients by global norm."""
@@ -249,7 +285,7 @@ class UpdateOp(Op):
         self._accumulated_grads = None
         self._accumulation_count = 0
 
-    def forward(self, data: Array, state: MutableMapping[str, Any]) -> None:
+    def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> None:
         """Compute gradients and update model parameters.
 
         Args:

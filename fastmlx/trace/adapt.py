@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, MutableMapping, Optional
 import math
+from typing import Callable, MutableMapping, Optional
 
 from .base import Trace
 
@@ -20,6 +20,9 @@ class LRScheduler(Trace):
         self.model = model
         self.lr_fn = lr_fn
         self.step: int = 0
+
+    def on_start(self, state: MutableMapping[str, object]) -> None:
+        self.step = 0
 
     def on_batch_end(self, batch: MutableMapping[str, object], state: MutableMapping[str, object]) -> None:
         self.step += 1
@@ -100,8 +103,8 @@ class EarlyStopping(Trace):
                 state['should_stop'] = True
                 print(f"FastMLX-EarlyStopping: Stopping training at epoch {epoch}")
                 if self.restore_best_weights and self.best_weights is not None:
-                    print(f"FastMLX-EarlyStopping: Restoring best weights")
-                    if hasattr(state.get('model'), 'load_weights'):
+                    print("FastMLX-EarlyStopping: Restoring best weights")
+                    if hasattr(state.get('model'), 'update'):
                         state['model'].update(self.best_weights)
 
 
@@ -231,6 +234,9 @@ class WarmupScheduler(Trace):
         self.target_lr = target_lr
         self.start_lr = start_lr
         self.step: int = 0
+
+    def on_start(self, state: MutableMapping[str, object]) -> None:
+        self.step = 0
 
     def on_batch_end(self, batch: MutableMapping[str, object], state: MutableMapping[str, object]) -> None:
         self.step += 1

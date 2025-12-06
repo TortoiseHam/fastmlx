@@ -1,40 +1,39 @@
 """Tracing utilities for FastMLX."""
 
-from .base import Trace
-
-# Metric traces
-from .metric import (
-    Accuracy,
-    LossMonitor,
-    Precision,
-    Recall,
-    F1Score,
-    ConfusionMatrix,
-    MCC,
-    Dice,
-)
-
-# IO traces
-from .io import (
-    BestModelSaver,
-    ModelSaver,
-    CSVLogger,
-    ProgressLogger,
-    Timer,
-)
-
 # Adapt traces
 from .adapt import (
-    LRScheduler,
     EarlyStopping,
+    LRScheduler,
     ReduceLROnPlateau,
     TerminateOnNaN,
     WarmupScheduler,
 )
+from .base import Trace
+
+# IO traces
+from .io import (
+    BestModelSaver,
+    CSVLogger,
+    ModelSaver,
+    ProgressLogger,
+    Timer,
+)
+
+# Metric traces
+from .metric import (
+    MCC,
+    Accuracy,
+    ConfusionMatrix,
+    Dice,
+    F1Score,
+    LossMonitor,
+    Precision,
+    Recall,
+)
 
 # TensorBoard traces (optional dependency)
 try:
-    from .tensorboard import TensorBoardLogger, TensorBoardEmbedding
+    from .tensorboard import TensorBoardEmbedding, TensorBoardLogger  # noqa: F401
     _TENSORBOARD_AVAILABLE = True
 except ImportError:
     _TENSORBOARD_AVAILABLE = False

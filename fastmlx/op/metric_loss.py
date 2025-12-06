@@ -213,12 +213,17 @@ class CenterLoss(Op):
         """Update class centers based on batch features."""
         # This is a simplified update - in practice you'd want to use
         # gradient descent on the centers as well
+        centers_list = []
         for i in range(self.num_classes):
             mask = labels == i
             if mx.sum(mask) > 0:
                 class_features = features[mask]
                 center_diff = mx.mean(class_features, axis=0) - self.centers[i]
-                self.centers = self.centers.at[i].add(self.alpha * center_diff)
+                updated_center = self.centers[i] + self.alpha * center_diff
+                centers_list.append(updated_center)
+            else:
+                centers_list.append(self.centers[i])
+        self.centers = mx.stack(centers_list, axis=0)
 
 
 class CosineSimilarityLoss(Op):

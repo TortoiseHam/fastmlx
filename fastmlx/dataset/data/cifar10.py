@@ -6,6 +6,7 @@ from typing import Tuple
 
 import mlx.core as mx
 from mlx.data.datasets import cifar
+
 from ..mlx_dataset import MLXDataset
 
 

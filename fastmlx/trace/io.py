@@ -5,11 +5,11 @@ from __future__ import annotations
 import csv
 import os
 from datetime import datetime
-from typing import MutableMapping, Optional, List, Dict, Any
-
-from .base import Trace
+from typing import Any, Dict, List, MutableMapping, Optional
 
 import mlx.core as mx
+
+from .base import Trace
 
 
 class BestModelSaver(Trace):

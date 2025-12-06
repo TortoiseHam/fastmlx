@@ -29,22 +29,14 @@ Example:
     >>> estimator.fit()
 """
 
-from .pipeline import Pipeline
-from .network import Network
-from .estimator import Estimator
-from .util import build
-from .display import BatchDisplay, GridDisplay
-from .backend.amp import AMPConfig
-
 # Import submodules for easy access
-from . import op
-from . import trace
-from . import architecture
-from . import dataset
-from . import schedule
-from . import search
-from . import summary
-from . import backend
+from . import architecture, backend, dataset, op, schedule, search, summary, trace
+from .backend.amp import AMPConfig
+from .display import BatchDisplay, GridDisplay
+from .estimator import Estimator
+from .network import Network
+from .pipeline import Pipeline
+from .util import build
 
 __all__ = [
     # Core classes

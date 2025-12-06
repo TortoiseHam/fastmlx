@@ -49,7 +49,6 @@ class HingeLoss(Op):
         # Handle multi-class case
         if y_pred.ndim > 1 and y_pred.shape[-1] > 1:
             num_classes = y_pred.shape[-1]
-            batch_size = y_pred.shape[0]
 
             # Get true class indices
             if y_true.ndim > 1:

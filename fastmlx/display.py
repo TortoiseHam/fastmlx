@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Union
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 from plotly.graph_objects import Figure, Image
 from plotly.subplots import make_subplots
 
 
-Array = mx.array
-
-
-def _to_numpy(arr: mx.array | np.ndarray) -> np.ndarray:
+def _to_numpy(arr: Union[mx.array, np.ndarray]) -> np.ndarray:
     """Convert an MLX array or numpy array into numpy."""
     if isinstance(arr, mx.array):
         return np.array(arr)
@@ -23,7 +20,7 @@ def _to_numpy(arr: mx.array | np.ndarray) -> np.ndarray:
 class ImageDisplay:
     """Display a single image."""
 
-    def __init__(self, image: Array, title: Optional[str] = None) -> None:
+    def __init__(self, image: Union[mx.array, np.ndarray], title: Optional[str] = None) -> None:
         img = _to_numpy(image)
         if img.ndim == 3 and img.shape[0] in (1, 3) and img.shape[0] != img.shape[-1]:
             img = np.moveaxis(img, 0, -1)
@@ -42,7 +39,7 @@ class BatchDisplay:
 
     def __init__(
         self,
-        image: Optional[Array | Sequence[Array]] = None,
+        image: Optional[Union[mx.array, np.ndarray, Sequence[Union[mx.array, np.ndarray]]]] = None,
         text: Optional[Sequence[str]] = None,
         title: Optional[str] = None,
     ) -> None:

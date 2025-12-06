@@ -64,6 +64,7 @@ class Network:
         Args:
             batch: Dictionary containing input data.
             state: Dictionary for sharing state between ops and traces.
+                   Should contain 'mode' key for mode filtering.
 
         Returns:
             The modified batch dictionary with outputs added.
@@ -72,8 +73,13 @@ class Network:
             NetworkError: If an op fails or required inputs are missing.
         """
         store = batch
+        current_mode = state.get("mode")
 
         for i, op in enumerate(self.ops):
+            # Check if op should run in current mode
+            if hasattr(op, "should_run") and not op.should_run(current_mode):
+                continue
+
             # Validate inputs exist
             self._validate_inputs(op, store, i)
 

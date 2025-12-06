@@ -329,9 +329,14 @@ class PositionalEncoding(nn.Module):
         position = mx.arange(max_len)[:, None]
         div_term = mx.exp(mx.arange(0, dims, 2) * (-math.log(10000.0) / dims))
 
-        pe = mx.zeros((max_len, dims))
-        pe = pe.at[:, 0::2].add(mx.sin(position * div_term))
-        pe = pe.at[:, 1::2].add(mx.cos(position * div_term))
+        # Compute sin and cos components
+        sin_pe = mx.sin(position * div_term)  # (max_len, dims//2)
+        cos_pe = mx.cos(position * div_term)  # (max_len, dims//2)
+
+        # Interleave sin and cos: [sin0, cos0, sin1, cos1, ...]
+        # Stack and reshape to interleave
+        pe = mx.concatenate([sin_pe[:, :, None], cos_pe[:, :, None]], axis=2)
+        pe = pe.reshape(max_len, dims)
         self._pe = pe[None, :, :]  # (1, max_len, dims)
 
     def __call__(self, x: mx.array) -> mx.array:
@@ -601,6 +606,6 @@ class GPT(nn.Module):
 
             probs = mx.softmax(next_logits, axis=-1)
             next_token = mx.random.categorical(probs, axis=-1)[:, None]
-            tokens = next_token
+            tokens = mx.concatenate([tokens, next_token], axis=1)
 
-        return mx.concatenate([prompt, tokens], axis=1)
+        return tokens

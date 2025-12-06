@@ -1,28 +1,28 @@
 """Datasets used by FastMLX."""
 
-from .mlx_dataset import MLXDataset
 from .csv_dataset import CSVDataset
 from .dir_dataset import DirDataset, LabeledDirDataset
 from .generator_dataset import (
-    GeneratorDataset,
     BatchDataset,
     CombinedDataset,
+    GeneratorDataset,
     InterleaveDataset,
 )
+from .mlx_dataset import MLXDataset
 
 # NLP datasets
 from .nlp_dataset import (
-    TextDataset,
-    SequenceDataset,
-    TokenizedDataset,
     LanguageModelDataset,
+    SequenceDataset,
+    TextDataset,
+    TokenizedDataset,
 )
 
 # Time series datasets
 from .timeseries_dataset import (
+    OHLCVDataset,
     TimeSeriesDataset,
     WindowedDataset,
-    OHLCVDataset,
 )
 
 __all__ = [

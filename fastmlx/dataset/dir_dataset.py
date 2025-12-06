@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import mlx.core as mx
 import numpy as np

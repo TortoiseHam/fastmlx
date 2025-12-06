@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, MutableMapping, Tuple
+from typing import Any, MutableMapping, Optional, Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 from .op import Op
 
@@ -122,7 +122,7 @@ class GridDropout(Op):
         outputs: str,
         prob: float = 0.5,
         ratio: float = 0.5,
-        grid_size: int = None,
+        grid_size: Optional[int] = None,
         fill_value: float = 0
     ) -> None:
         super().__init__(inputs, outputs)

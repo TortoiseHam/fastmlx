@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, MutableMapping, Tuple, Union
+from typing import Any, MutableMapping, Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 from .op import Op
 
@@ -129,7 +129,7 @@ class GridMask(Op):
         d = np.random.randint(self.d_range[0], self.d_range[1])
 
         # Grid parameters
-        l = int(d * self.ratio)  # masked region size
+        mask_len = int(d * self.ratio)  # masked region size
 
         # Random offset
         delta_y = np.random.randint(d)
@@ -142,9 +142,9 @@ class GridMask(Op):
             for j in range(-1, w // d + 2):
                 x = j * d + delta_x
                 y1 = max(0, y)
-                y2 = min(h, y + l)
+                y2 = min(h, y + mask_len)
                 x1 = max(0, x)
-                x2 = min(w, x + l)
+                x2 = min(w, x + mask_len)
                 if y1 < y2 and x1 < x2:
                     mask[y1:y2, x1:x2] = 0
 

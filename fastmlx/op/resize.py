@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, MutableMapping, Tuple, Union
+from typing import Any, MutableMapping, Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 from .op import Op
 
@@ -38,6 +38,7 @@ class Resize(Op):
         """Resize a single image using simple interpolation."""
         h, w = img.shape[:2]
         new_h, new_w = self.height, self.width
+        has_channels = img.ndim == 3
 
         # Create coordinate grids
         y = np.linspace(0, h - 1, new_h)
@@ -48,23 +49,45 @@ class Resize(Op):
             xi = np.round(x).astype(int)
             yi = np.clip(yi, 0, h - 1)
             xi = np.clip(xi, 0, w - 1)
-            return img[yi[:, None], xi[None, :]]
+            if has_channels:
+                # For (H, W, C) images, use meshgrid to preserve channels
+                yy, xx = np.meshgrid(yi, xi, indexing='ij')
+                return img[yy, xx, :]
+            else:
+                return img[yi[:, None], xi[None, :]]
         else:  # bilinear
             y0 = np.floor(y).astype(int)
             x0 = np.floor(x).astype(int)
             y1 = np.minimum(y0 + 1, h - 1)
             x1 = np.minimum(x0 + 1, w - 1)
 
-            fy = (y - y0)[:, None]
-            fx = (x - x0)[None, :]
+            fy = y - y0
+            fx = x - x0
 
-            # Bilinear interpolation
-            result = (
-                img[y0[:, None], x0[None, :]] * (1 - fy) * (1 - fx) +
-                img[y0[:, None], x1[None, :]] * (1 - fy) * fx +
-                img[y1[:, None], x0[None, :]] * fy * (1 - fx) +
-                img[y1[:, None], x1[None, :]] * fy * fx
-            )
+            if has_channels:
+                # For (H, W, C) images, need to broadcast properly
+                yy0, xx0 = np.meshgrid(y0, x0, indexing='ij')
+                yy0, xx1 = np.meshgrid(y0, x1, indexing='ij')
+                yy1, xx0_b = np.meshgrid(y1, x0, indexing='ij')
+                yy1, xx1_b = np.meshgrid(y1, x1, indexing='ij')
+                fy = fy[:, None, None]
+                fx = fx[None, :, None]
+
+                result = (
+                    img[yy0, xx0, :] * (1 - fy) * (1 - fx) +
+                    img[yy0, xx1, :] * (1 - fy) * fx +
+                    img[yy1, xx0_b, :] * fy * (1 - fx) +
+                    img[yy1, xx1_b, :] * fy * fx
+                )
+            else:
+                fy = fy[:, None]
+                fx = fx[None, :]
+                result = (
+                    img[y0[:, None], x0[None, :]] * (1 - fy) * (1 - fx) +
+                    img[y0[:, None], x1[None, :]] * (1 - fy) * fx +
+                    img[y1[:, None], x0[None, :]] * fy * (1 - fx) +
+                    img[y1[:, None], x1[None, :]] * fy * fx
+                )
             return result
 
     def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> mx.array:

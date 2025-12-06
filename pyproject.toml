@@ -25,6 +25,7 @@ classifiers = [
 
 dependencies = [
     "mlx>=0.30.0",
+    "mlx-data>=0.0.3; sys_platform == 'darwin'",
     "numpy>=1.26.0",
     "tqdm>=4.66.0",
 ]
@@ -36,15 +37,12 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.7.0",
 ]
-data = [
-    "mlx-data>=0.0.3",
-]
 viz = [
     "plotly>=5.18.0",
     "Pillow>=10.0.0",
 ]
 all = [
-    "fastmlx[data,viz]",
+    "fastmlx[viz]",
 ]
 
 [project.urls]

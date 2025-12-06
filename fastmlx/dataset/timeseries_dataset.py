@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import os
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import mlx.core as mx
-
-Array = mx.array
 
 
 class TimeSeriesDataset:
@@ -84,7 +81,7 @@ class TimeSeriesDataset:
         data = []
         with open(path, "r") as f:
             reader = csv.reader(f)
-            header = next(reader, None)  # Skip header if present
+            _ = next(reader, None)  # Skip header if present
 
             for row in reader:
                 try:
@@ -143,7 +140,7 @@ class TimeSeriesDataset:
 
         return normalized_data, params
 
-    def denormalize(self, data: Array, column: Optional[int] = None) -> Array:
+    def denormalize(self, data: mx.array, column: Optional[int] = None) -> mx.array:
         """Denormalize data back to original scale."""
         if not self.normalization_params:
             return data
@@ -167,7 +164,7 @@ class TimeSeriesDataset:
     def __len__(self) -> int:
         return self._num_samples
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         start = idx * self.stride
         input_end = start + self.input_length
         output_end = input_end + self.output_length
@@ -240,7 +237,7 @@ class WindowedDataset:
     def __len__(self) -> int:
         return len(self.windows)
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         window = self.windows[idx]
 
         if self.flatten:
@@ -287,8 +284,8 @@ class OHLCVDataset:
         input_length: int = 30,
         output_length: int = 1,
         target: str = "close",
-        features: List[str] = None,
-        normalize: bool = True
+        features: Optional[List[str]] = None,
+        normalize: bool = True,
     ) -> None:
         # Load from CSV if path
         if isinstance(data, str):
@@ -355,14 +352,22 @@ class OHLCVDataset:
                 ])
 
             if "returns" in self.features and i > 0:
-                ret = (self.closes[i] - self.closes[i - 1]) / self.closes[i - 1]
+                # Safe division for returns
+                prev_close = self.closes[i - 1]
+                if prev_close != 0:
+                    ret = (self.closes[i] - prev_close) / prev_close
+                else:
+                    ret = 0.0
                 features.append(ret)
             elif "returns" in self.features:
                 features.append(0.0)
 
             if "volatility" in self.features:
-                # Simple volatility: (high - low) / close
-                vol = (self.highs[i] - self.lows[i]) / self.closes[i]
+                # Simple volatility: (high - low) / close, with safe division
+                if self.closes[i] != 0:
+                    vol = (self.highs[i] - self.lows[i]) / self.closes[i]
+                else:
+                    vol = 0.0
                 features.append(vol)
 
             if "ma" in self.features:
@@ -372,7 +377,11 @@ class OHLCVDataset:
                         ma = sum(self.closes[i - period + 1: i + 1]) / period
                     else:
                         ma = self.closes[i]
-                    features.append(ma / self.closes[i] - 1)  # Relative to current close
+                    # Safe division for MA ratio
+                    if self.closes[i] != 0:
+                        features.append(ma / self.closes[i] - 1)
+                    else:
+                        features.append(0.0)
 
             feature_matrix.append(features)
 
@@ -445,7 +454,7 @@ class OHLCVDataset:
     def __len__(self) -> int:
         return self._num_samples
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         input_end = idx + self.input_length
 
         # Input features

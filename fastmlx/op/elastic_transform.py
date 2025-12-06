@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, MutableMapping, Optional, Tuple
 
-import numpy as np
 import mlx.core as mx
+import numpy as np
 
 from .op import Op
 
@@ -117,7 +117,8 @@ class ElasticTransform(Op):
     ) -> np.ndarray:
         """Remap image using bilinear interpolation."""
         h, w = img.shape[:2]
-        c = img.shape[2] if img.ndim == 3 else 1
+        # Channel count (unused, kept for potential future use)
+        _ = img.shape[2] if img.ndim == 3 else 1
 
         # Clip coordinates
         map_x = np.clip(map_x, 0, w - 1)
