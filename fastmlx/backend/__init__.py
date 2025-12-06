@@ -40,6 +40,15 @@ from .summary import (
     compare_models,
 )
 
+from .amp import (
+    AMPConfig,
+    GradScaler,
+    cast_to_dtype,
+    get_model_dtype,
+    amp_forward,
+    estimate_memory_savings,
+)
+
 __all__ = [
     # Device utilities
     "get_device",
@@ -71,4 +80,11 @@ __all__ = [
     "model_summary",
     "layer_info",
     "compare_models",
+    # AMP utilities
+    "AMPConfig",
+    "GradScaler",
+    "cast_to_dtype",
+    "get_model_dtype",
+    "amp_forward",
+    "estimate_memory_savings",
 ]
