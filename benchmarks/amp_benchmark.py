@@ -46,23 +46,21 @@ class ConvNet(nn.Module):
 
     def __init__(self, num_classes: int = 10):
         super().__init__()
+        # MLX Conv2d expects (N, H, W, C) format
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.fc1 = nn.Linear(128 * 4 * 4, 256)
         self.fc2 = nn.Linear(256, num_classes)
 
     def __call__(self, x):
-        # x: (N, H, W, C) -> need (N, C, H, W) for conv
-        x = mx.transpose(x, (0, 3, 1, 2))
-
+        # x: (N, H, W, C) - MLX native format, no transpose needed
         x = nn.relu(self.conv1(x))
-        x = self.pool(x)
+        x = nn.max_pool2d(x, kernel_size=2, stride=2)
         x = nn.relu(self.conv2(x))
-        x = self.pool(x)
+        x = nn.max_pool2d(x, kernel_size=2, stride=2)
         x = nn.relu(self.conv3(x))
-        x = self.pool(x)
+        x = nn.max_pool2d(x, kernel_size=2, stride=2)
 
         x = x.reshape(x.shape[0], -1)
         x = nn.relu(self.fc1(x))
