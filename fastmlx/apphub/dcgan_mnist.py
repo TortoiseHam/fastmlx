@@ -38,7 +38,8 @@ class GeneratorOp(Op):
         self.latent_dim = latent_dim
 
     def forward(self, data, state):
-        x = data[0]  # Use to get batch size
+        # data is a single array when there's one input
+        x = data if not isinstance(data, list) else data[0]
         batch_size = x.shape[0]
         z = mx.random.normal((batch_size, self.latent_dim))
         fake_images = self.generator(z)
@@ -98,7 +99,8 @@ class GeneratorLoss(Op):
         self.discriminator = discriminator
 
     def forward(self, data, state):
-        fake_images = data[0]
+        # data is a single array when there's one input
+        fake_images = data if not isinstance(data, list) else data[0]
 
         # Generator wants discriminator to classify fakes as real (1)
         fake_preds = self.discriminator(fake_images)

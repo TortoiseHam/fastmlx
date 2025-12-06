@@ -50,7 +50,8 @@ class TeacherModelOp(Op):
         self.model = model
 
     def forward(self, data, state):
-        x = data[0]
+        # data is a single array when there's one input (Network passes single value)
+        x = data if not isinstance(data, list) else data[0]
         # Teacher inference (no training)
         with mx.no_grad():
             logits = self.model(x)

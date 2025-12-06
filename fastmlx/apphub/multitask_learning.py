@@ -117,7 +117,8 @@ class MultiTaskModelOp(Op):
         self.model = model
 
     def forward(self, data, state):
-        x = data[0]
+        # data is a single array when there's one input
+        x = data if not isinstance(data, list) else data[0]
         task_outputs = self.model(x)
         # Return outputs in order specified
         return tuple(task_outputs[key] for key in self.outputs)

@@ -58,7 +58,8 @@ class EnsembleModelOp(Op):
         self.weights = weights or [1.0 / len(models)] * len(models)
 
     def forward(self, data, state):
-        x = data[0]
+        # data is a single array when there's one input
+        x = data if not isinstance(data, list) else data[0]
 
         # Get predictions from all models
         predictions = []
@@ -71,9 +72,8 @@ class EnsembleModelOp(Op):
             votes = mx.zeros((x.shape[0], predictions[0].shape[-1]))
             for pred in predictions:
                 vote = mx.argmax(pred, axis=-1)
-                votes = votes.at[:, :].add(
-                    mx.one_hot(vote, predictions[0].shape[-1])
-                )
+                # Accumulate one-hot votes
+                votes = votes + mx.one_hot(vote, predictions[0].shape[-1])
             return votes  # Return vote counts as "logits"
 
         elif self.method == "weighted":

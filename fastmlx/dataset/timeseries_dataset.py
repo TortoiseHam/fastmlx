@@ -352,14 +352,22 @@ class OHLCVDataset:
                 ])
 
             if "returns" in self.features and i > 0:
-                ret = (self.closes[i] - self.closes[i - 1]) / self.closes[i - 1]
+                # Safe division for returns
+                prev_close = self.closes[i - 1]
+                if prev_close != 0:
+                    ret = (self.closes[i] - prev_close) / prev_close
+                else:
+                    ret = 0.0
                 features.append(ret)
             elif "returns" in self.features:
                 features.append(0.0)
 
             if "volatility" in self.features:
-                # Simple volatility: (high - low) / close
-                vol = (self.highs[i] - self.lows[i]) / self.closes[i]
+                # Simple volatility: (high - low) / close, with safe division
+                if self.closes[i] != 0:
+                    vol = (self.highs[i] - self.lows[i]) / self.closes[i]
+                else:
+                    vol = 0.0
                 features.append(vol)
 
             if "ma" in self.features:
@@ -369,7 +377,11 @@ class OHLCVDataset:
                         ma = sum(self.closes[i - period + 1: i + 1]) / period
                     else:
                         ma = self.closes[i]
-                    features.append(ma / self.closes[i] - 1)  # Relative to current close
+                    # Safe division for MA ratio
+                    if self.closes[i] != 0:
+                        features.append(ma / self.closes[i] - 1)
+                    else:
+                        features.append(0.0)
 
             feature_matrix.append(features)
 

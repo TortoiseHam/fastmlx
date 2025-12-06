@@ -78,7 +78,8 @@ class SimCLRAugmentation(Op):
         super().__init__([inputs], list(outputs))
 
     def forward(self, data, state):
-        x = data[0]
+        # data is a single array when there's one input
+        x = data if not isinstance(data, list) else data[0]
         # Return same image twice (augmentation applied separately in pipeline)
         return x, x.copy()
 

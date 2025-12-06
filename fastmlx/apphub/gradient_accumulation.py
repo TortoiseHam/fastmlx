@@ -57,7 +57,8 @@ class GradientAccumulationUpdateOp(Op):
         # This is a simplified version - full implementation would integrate
         # with the training loop
 
-        loss = data[0]
+        # data is a single array when there's one input
+        loss = data if not isinstance(data, list) else data[0]
 
         # In practice, gradient accumulation requires integration with
         # the training loop. This example shows the concept.

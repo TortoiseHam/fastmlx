@@ -96,7 +96,8 @@ class GPTModelOp(Op):
         self.model = model
 
     def forward(self, data, state):
-        tokens = data[0]
+        # data is a single array when there's one input
+        tokens = data if not isinstance(data, list) else data[0]
         logits, _ = self.model(tokens)
         return logits
 

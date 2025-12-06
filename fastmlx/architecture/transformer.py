@@ -601,6 +601,6 @@ class GPT(nn.Module):
 
             probs = mx.softmax(next_logits, axis=-1)
             next_token = mx.random.categorical(probs, axis=-1)[:, None]
-            tokens = next_token
+            tokens = mx.concatenate([tokens, next_token], axis=1)
 
-        return mx.concatenate([prompt, tokens], axis=1)
+        return tokens
