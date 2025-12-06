@@ -3,10 +3,31 @@
 from __future__ import annotations
 
 import multiprocessing as mp
-from typing import Any, Iterable, Iterator, List, MutableMapping, Optional
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Union,
+)
 
 import mlx.core as mx
-import mlx.data as dx
+import numpy as np
+
+# Optional MLX Data import
+try:
+    import mlx.data as dx
+    HAS_MLX_DATA = True
+except ImportError:
+    dx = None  # type: ignore
+    HAS_MLX_DATA = False
+
+from .op.batch import Batch, DynamicBatch
+from .op.filtered_data import FilteredData
 
 
 class PipelineError(Exception):
@@ -38,248 +59,510 @@ def _validate_op_inputs(
             )
 
 
-def _process_sample(
-    sample: MutableMapping[str, mx.array],
-    ops: List,
-    state: Optional[MutableMapping[str, object]] = None,
-    mode: Optional[str] = None,
-) -> MutableMapping[str, mx.array]:
-    """Apply Ops to a single sample.
+def _apply_sample_op(
+    op: Any,
+    sample: MutableMapping[str, Any],
+    state: MutableMapping[str, Any],
+    op_index: int,
+) -> Union[MutableMapping[str, Any], FilteredData]:
+    """Apply a single op to a sample.
 
     Args:
-        sample: Dictionary of sample data.
-        ops: List of ops to apply.
-        state: Optional state dictionary.
-        mode: Current execution mode ("train", "eval", etc.).
+        op: The operation to apply.
+        sample: The sample dictionary.
+        state: State dictionary.
+        op_index: Index of op (for error messages).
 
     Returns:
-        Processed sample dictionary.
-
-    Raises:
-        PipelineError: If processing fails.
+        Processed sample or FilteredData if sample should be dropped.
     """
-    if state is None:
-        state = {"mode": mode}
-    else:
-        state["mode"] = mode
+    op_name = f"Op {op_index} ({op.__class__.__name__})"
 
-    for i, op in enumerate(ops):
-        # Check if op should run in current mode
-        if hasattr(op, "should_run") and not op.should_run(mode):
-            continue
+    # Check if op should run in current mode
+    mode = state.get("mode")
+    if hasattr(op, "should_run") and not op.should_run(mode):
+        return sample
 
-        op_name = f"Op {i} ({op.__class__.__name__})"
+    # Validate inputs
+    _validate_op_inputs(op, sample, op_name)
 
-        # Validate inputs
-        _validate_op_inputs(op, sample, op_name)
+    try:
+        if len(op.inputs) == 1:
+            inp = sample[op.inputs[0]]
+        else:
+            inp = [sample[k] for k in op.inputs]
 
-        try:
-            inp = sample[op.inputs[0]] if len(op.inputs) == 1 else [sample[k] for k in op.inputs]
-            out = op.forward(inp, state)
-        except Exception as e:
-            raise PipelineError(f"{op_name}: Processing failed with error: {e}") from e
+        out = op.forward(inp, state)
+    except Exception as e:
+        raise PipelineError(f"{op_name}: Processing failed: {e}") from e
 
-        if op.outputs:
-            if len(op.outputs) == 1:
-                sample[op.outputs[0]] = out
-            else:
-                for k, v in zip(op.outputs, out):
-                    sample[k] = v
+    # Check if sample should be filtered
+    if isinstance(out, FilteredData):
+        return out
+
+    # Store outputs
+    if op.outputs:
+        if len(op.outputs) == 1:
+            sample[op.outputs[0]] = out
+        else:
+            if not isinstance(out, (list, tuple)):
+                raise PipelineError(
+                    f"{op_name}: Expected {len(op.outputs)} outputs but got single value"
+                )
+            for k, v in zip(op.outputs, out):
+                sample[k] = v
 
     return sample
 
 
-class Pipeline:
-    """Hold datasets and preprocessing operations.
+def _process_sample(
+    sample: MutableMapping[str, Any],
+    ops: Sequence[Any],
+    state: MutableMapping[str, Any],
+) -> Union[MutableMapping[str, Any], FilteredData]:
+    """Apply sample ops to a single sample.
 
     Args:
-        train_data: Training dataset (iterable of samples).
+        sample: Dictionary of sample data.
+        ops: List of sample-level ops to apply.
+        state: State dictionary with 'mode' key.
+
+    Returns:
+        Processed sample or FilteredData if filtered.
+    """
+    for i, op in enumerate(ops):
+        result = _apply_sample_op(op, sample, state, i)
+        if isinstance(result, FilteredData):
+            return result
+        sample = result
+
+    return sample
+
+
+def _apply_batch_ops(
+    batch: MutableMapping[str, mx.array],
+    ops: Sequence[Any],
+    state: MutableMapping[str, Any],
+) -> MutableMapping[str, mx.array]:
+    """Apply batch-level ops to a batch.
+
+    Args:
+        batch: Dictionary of batched MLX arrays.
+        ops: List of batch-level ops to apply.
+        state: State dictionary with 'mode' key.
+
+    Returns:
+        Processed batch.
+    """
+    for i, op in enumerate(ops):
+        op_name = f"BatchOp {i} ({op.__class__.__name__})"
+        mode = state.get("mode")
+
+        # Check if op should run in current mode
+        if hasattr(op, "should_run") and not op.should_run(mode):
+            continue
+
+        _validate_op_inputs(op, batch, op_name)
+
+        try:
+            if len(op.inputs) == 1:
+                inp = batch[op.inputs[0]]
+            else:
+                inp = [batch[k] for k in op.inputs]
+
+            # Use forward_batch if available, otherwise forward
+            if hasattr(op, "forward_batch"):
+                out = op.forward_batch(inp, state)
+            else:
+                out = op.forward(inp, state)
+        except Exception as e:
+            raise PipelineError(f"{op_name}: Batch processing failed: {e}") from e
+
+        if op.outputs:
+            if len(op.outputs) == 1:
+                batch[op.outputs[0]] = out
+            else:
+                for k, v in zip(op.outputs, out):
+                    batch[k] = v
+
+    return batch
+
+
+class Pipeline:
+    """Data loading and preprocessing pipeline with sample and batch operations.
+
+    The Pipeline orchestrates data flow through three stages:
+    1. Sample ops: Applied to individual samples (numpy arrays)
+    2. Batching: Collates samples into batches (converts to MLX arrays)
+    3. Batch ops: Applied to batched data (MLX arrays)
+
+    Ops are split based on the Batch op position in the ops list:
+    - Ops before Batch: sample-level (can filter, work on numpy)
+    - Ops after Batch: batch-level (work on MLX arrays, e.g., MixUp)
+
+    Args:
+        train_data: Training dataset (iterable of sample dicts).
         eval_data: Optional evaluation dataset.
-        batch_size: Number of samples per batch.
-        ops: List of preprocessing operations to apply.
-        num_process: Number of worker processes for prefetching.
-            If 0, no prefetching. If None, uses CPU count.
+        batch_size: Default batch size (used if no Batch op specified).
+        ops: List of preprocessing operations.
+        num_process: Number of workers for prefetching (0 = no prefetching).
 
     Example:
+        Basic pipeline:
         >>> pipeline = Pipeline(
         ...     train_data=train_ds,
         ...     eval_data=eval_ds,
         ...     batch_size=32,
-        ...     ops=[Minmax("x", "x")]
+        ...     ops=[Normalize(inputs="x", outputs="x")]
         ... )
-        >>> for batch in pipeline.get_loader("train"):
-        ...     print(batch["x"].shape)
+
+        With explicit batching and filtering:
+        >>> pipeline = Pipeline(
+        ...     train_data=train_ds,
+        ...     ops=[
+        ...         # Sample ops (before Batch)
+        ...         DropSmallImages(min_size=64),  # Returns FilteredData
+        ...         RandomCrop(inputs="x", outputs="x"),
+        ...         HorizontalFlip(inputs="x", outputs="x"),
+        ...
+        ...         # Batching configuration
+        ...         Batch(batch_size=32, drop_last=True),
+        ...
+        ...         # Batch ops (after Batch)
+        ...         Normalize(inputs="x", outputs="x"),
+        ...         MixUp(inputs=["x", "y"], outputs=["x", "y"]),
+        ...     ]
+        ... )
+
+        With padding for variable-length data:
+        >>> pipeline = Pipeline(
+        ...     train_data=text_ds,
+        ...     ops=[
+        ...         Tokenize(inputs="text", outputs="tokens"),
+        ...         Batch(batch_size=32, pad_value=0),  # Pads sequences
+        ...         Embedding(inputs="tokens", outputs="x"),
+        ...     ]
+        ... )
     """
 
     def __init__(
         self,
-        train_data: Iterable,
-        eval_data: Optional[Iterable] = None,
+        train_data: Iterable[Dict[str, Any]],
+        eval_data: Optional[Iterable[Dict[str, Any]]] = None,
         batch_size: int = 32,
-        ops: Optional[Iterable] = None,
-        num_process: Optional[int] = 0
+        ops: Optional[Iterable[Any]] = None,
+        num_process: Optional[int] = 0,
     ) -> None:
-        self.train_data: Iterable = train_data
-        self.eval_data: Optional[Iterable] = eval_data
-        self.batch_size: int = batch_size
-        self.ops: List = list(ops or [])
-        self.num_process: int = mp.cpu_count() if num_process is None else num_process
+        self.train_data = train_data
+        self.eval_data = eval_data
+        self.num_process = mp.cpu_count() if num_process is None else num_process
 
-    def _apply_ops(
+        # Parse ops into sample ops, batch op, batch ops
+        ops_list = list(ops or [])
+        self.sample_ops, self.batch_op, self.batch_ops = self._split_ops(ops_list)
+
+        # Create default Batch op if none specified
+        if self.batch_op is None:
+            self.batch_op = Batch(batch_size=batch_size)
+
+    def _split_ops(
         self,
-        batch: MutableMapping[str, mx.array],
-        mode: Optional[str] = None
-    ) -> MutableMapping[str, mx.array]:
-        """Apply ops to a batch of data.
+        ops: List[Any],
+    ) -> tuple[List[Any], Optional[Batch], List[Any]]:
+        """Split ops into sample ops, batch op, and batch ops.
 
         Args:
-            batch: Dictionary of batched arrays.
-            mode: Current execution mode ("train", "eval", etc.).
+            ops: Full list of operations.
 
         Returns:
-            Processed batch dictionary.
+            Tuple of (sample_ops, batch_op, batch_ops).
         """
-        state: MutableMapping[str, object] = {"mode": mode}
+        sample_ops: List[Any] = []
+        batch_op: Optional[Batch] = None
+        batch_ops: List[Any] = []
 
-        for i, op in enumerate(self.ops):
-            # Check if op should run in current mode
-            if hasattr(op, "should_run") and not op.should_run(mode):
-                continue
+        for op in ops:
+            if isinstance(op, (Batch, DynamicBatch)):
+                if batch_op is not None:
+                    raise ValueError(
+                        "Only one Batch op allowed per Pipeline. "
+                        f"Found multiple: {batch_op}, {op}"
+                    )
+                batch_op = op
+            elif batch_op is None:
+                sample_ops.append(op)
+            else:
+                batch_ops.append(op)
 
-            op_name = f"Op {i} ({op.__class__.__name__})"
+        return sample_ops, batch_op, batch_ops
 
-            # Validate inputs
-            _validate_op_inputs(op, batch, op_name)
-
-            try:
-                inp = batch[op.inputs[0]] if len(op.inputs) == 1 else [batch[k] for k in op.inputs]
-                out = op.forward(inp, state)
-            except Exception as e:
-                raise PipelineError(f"{op_name}: Batch processing failed: {e}") from e
-
-            if op.outputs:
-                if len(op.outputs) == 1:
-                    batch[op.outputs[0]] = out
-                else:
-                    for k_out, v_out in zip(op.outputs, out):
-                        batch[k_out] = v_out
-
-        return batch
-
-    def _loader(
+    def _sample_iterator(
         self,
-        dataset: Iterable,
-        mode: str = "train",
-        shuffle: bool = False
-    ) -> Iterator[MutableMapping[str, object]]:
-        """Create an iterator over processed batches.
+        dataset: Iterable[Dict[str, Any]],
+        mode: str,
+        shuffle: bool,
+    ) -> Iterator[Dict[str, Any]]:
+        """Create an iterator that applies sample ops with filtering.
 
         Args:
             dataset: The dataset to iterate over.
-            mode: Current execution mode ("train", "eval", etc.).
-            shuffle: Whether to shuffle the data.
+            mode: Current mode ("train", "eval").
+            shuffle: Whether to shuffle.
 
         Yields:
-            Processed batch dictionaries.
+            Processed samples (FilteredData samples are skipped).
         """
-        import numpy as np
+        state: Dict[str, Any] = {"mode": mode}
 
-        if isinstance(dataset, dx.Buffer):
-            # MLX Data buffer - use streaming
-            buffer = dataset
-            if shuffle:
-                buffer = buffer.shuffle()
-
-            def transform(sample: MutableMapping[str, object]) -> MutableMapping[str, object]:
-                mx_sample = {k: mx.array(v) for k, v in sample.items()}
-                return _process_sample(mx_sample, self.ops, {}, mode=mode)
-
-            stream = buffer.sample_transform(transform)
-            stream = stream.batch(self.batch_size)
-            if self.num_process and self.num_process > 0:
-                stream = stream.ordered_prefetch(self.batch_size * 2, self.num_process)
-
-            for batch in stream:
-                yield {k: mx.array(v) for k, v in batch.items()}
-
-        elif hasattr(dataset, "data") and hasattr(dataset, "__len__"):
-            # In-memory dataset with .data attribute (like MLXDataset)
-            try:
-                arrays = {k: mx.array(v) for k, v in dataset.data.items()}
-            except Exception as e:
-                raise PipelineError(f"Failed to convert dataset.data to arrays: {e}") from e
-
-            size = len(dataset)
-            if size == 0:
-                return  # Empty dataset
-
-            # Create index array for shuffling
-            indices = np.arange(size)
-            if shuffle:
-                np.random.shuffle(indices)
-
-            for start in range(0, size, self.batch_size):
-                batch_indices = indices[start:start + self.batch_size]
-                batch = {k: v[batch_indices] for k, v in arrays.items()}
-                batch = self._apply_ops(batch, mode=mode)
-                yield batch
-
+        # Convert dataset to list for shuffling if needed
+        if shuffle:
+            data_list = list(dataset)
+            np.random.shuffle(data_list)
+            data_iter: Iterable[Dict[str, Any]] = data_list
         else:
-            # Generic iterable - convert to buffer
-            try:
-                data_list = list(dataset)
-            except Exception as e:
-                raise PipelineError(f"Failed to convert dataset to list: {e}") from e
+            data_iter = dataset
 
-            if len(data_list) == 0:
-                return  # Empty dataset
+        # Use MLX Data prefetching if available and requested
+        if HAS_MLX_DATA and self.num_process > 0 and not shuffle:
+            # MLX Data can parallelize sample transforms
+            yield from self._mlx_data_sample_iterator(data_iter, state)
+        else:
+            # Simple sequential processing
+            for sample in data_iter:
+                # Ensure numpy arrays
+                sample = self._to_numpy(sample)
+                result = _process_sample(sample, self.sample_ops, state)
 
-            if shuffle:
-                import random
-                data_list = data_list.copy()
-                random.shuffle(data_list)
+                if not isinstance(result, FilteredData):
+                    yield result
 
-            buffer = dx.buffer_from_vector(data_list)
+    def _mlx_data_sample_iterator(
+        self,
+        dataset: Iterable[Dict[str, Any]],
+        state: Dict[str, Any],
+    ) -> Iterator[Dict[str, Any]]:
+        """Use MLX Data for parallel sample processing.
 
-            def transform(sample: MutableMapping[str, object]) -> MutableMapping[str, object]:
-                mx_sample = {k: mx.array(v) for k, v in sample.items()}
-                return _process_sample(mx_sample, self.ops, {}, mode=mode)
+        Args:
+            dataset: The dataset.
+            state: State dictionary.
 
-            stream = buffer.sample_transform(transform)
-            stream = stream.batch(self.batch_size)
-            if self.num_process and self.num_process > 0:
-                stream = stream.ordered_prefetch(self.batch_size * 2, self.num_process)
+        Yields:
+            Processed samples.
+        """
+        # Convert to list for MLX Data buffer
+        data_list = list(dataset)
+        if not data_list:
+            return
 
-            for batch in stream:
-                yield {k: mx.array(v) for k, v in batch.items()}
+        buffer = dx.buffer_from_vector(data_list)
+
+        def transform(sample: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+            sample = self._to_numpy(sample)
+            result = _process_sample(sample, self.sample_ops, state)
+            if isinstance(result, FilteredData):
+                return None  # Will be filtered by stream filter
+            return result
+
+        stream = buffer.sample_transform(transform)
+        stream = stream.ordered_prefetch(
+            self.batch_op.batch_size * 2,
+            self.num_process
+        )
+
+        for sample in stream:
+            if sample is not None:
+                yield sample
+
+    def _to_numpy(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert sample values to numpy arrays.
+
+        Args:
+            sample: Sample dictionary.
+
+        Returns:
+            Sample with numpy arrays.
+        """
+        result = {}
+        for k, v in sample.items():
+            if isinstance(v, mx.array):
+                result[k] = np.array(v)
+            elif isinstance(v, np.ndarray):
+                result[k] = v
+            else:
+                result[k] = np.array(v)
+        return result
+
+    def _batch_iterator(
+        self,
+        sample_iter: Iterator[Dict[str, Any]],
+        mode: str,
+    ) -> Iterator[Dict[str, mx.array]]:
+        """Collect samples into batches and apply batch ops.
+
+        Args:
+            sample_iter: Iterator of processed samples.
+            mode: Current mode.
+
+        Yields:
+            Batched and processed data.
+        """
+        state: Dict[str, Any] = {"mode": mode}
+        batch_size = self.batch_op.batch_size
+        drop_last = self.batch_op.drop_last
+
+        # Handle DynamicBatch differently
+        if isinstance(self.batch_op, DynamicBatch):
+            yield from self._dynamic_batch_iterator(sample_iter, state)
+            return
+
+        # Regular batching
+        samples: List[Dict[str, Any]] = []
+
+        for sample in sample_iter:
+            samples.append(sample)
+
+            if len(samples) >= batch_size:
+                batch = self.batch_op.collate(samples[:batch_size])
+                batch = _apply_batch_ops(batch, self.batch_ops, state)
+                yield batch
+                samples = samples[batch_size:]
+
+        # Handle remaining samples
+        if samples and not drop_last:
+            batch = self.batch_op.collate(samples)
+            batch = _apply_batch_ops(batch, self.batch_ops, state)
+            yield batch
+
+    def _dynamic_batch_iterator(
+        self,
+        sample_iter: Iterator[Dict[str, Any]],
+        state: Dict[str, Any],
+    ) -> Iterator[Dict[str, mx.array]]:
+        """Handle DynamicBatch which groups by token count.
+
+        Args:
+            sample_iter: Iterator of processed samples.
+            state: State dictionary.
+
+        Yields:
+            Dynamically batched data.
+        """
+        # Collect all samples first (needed for size-based grouping)
+        samples = list(sample_iter)
+        if not samples:
+            return
+
+        # Get batch groupings
+        batch_indices = self.batch_op.compute_batch_indices(samples)
+
+        for indices in batch_indices:
+            batch_samples = [samples[i] for i in indices]
+            batch = self.batch_op.collate(batch_samples)
+            batch = _apply_batch_ops(batch, self.batch_ops, state)
+            yield batch
 
     def get_loader(
         self,
         mode: str = "train",
-        shuffle: Optional[bool] = None
-    ) -> Iterator[MutableMapping[str, object]]:
+        shuffle: Optional[bool] = None,
+    ) -> Iterator[Dict[str, mx.array]]:
         """Get a data loader for the specified mode.
 
         Args:
             mode: Either 'train' or 'eval'.
-            shuffle: Whether to shuffle the data. If None, shuffles for train mode only.
+            shuffle: Whether to shuffle. Defaults to True for train, False for eval.
 
         Returns:
-            Iterator yielding batch dictionaries.
+            Iterator yielding batch dictionaries with MLX arrays.
 
         Raises:
-            ValueError: If mode is invalid or dataset not available.
+            ValueError: If mode is invalid or dataset unavailable.
         """
-        if mode not in ("train", "eval"):
-            raise ValueError(f"mode must be 'train' or 'eval', got '{mode}'")
+        if mode not in ("train", "eval", "test", "infer"):
+            raise ValueError(f"mode must be 'train', 'eval', 'test', or 'infer', got '{mode}'")
 
-        dataset = self.train_data if mode == "train" else self.eval_data
+        if mode == "train":
+            dataset = self.train_data
+        else:
+            dataset = self.eval_data
 
         if dataset is None:
             raise ValueError(f"No dataset available for mode '{mode}'")
 
-        # Default: shuffle for training, no shuffle for eval
+        # Default shuffle behavior
         if shuffle is None:
             shuffle = (mode == "train")
 
-        return self._loader(dataset, mode=mode, shuffle=shuffle)
+        # Create sample iterator (with filtering)
+        sample_iter = self._sample_iterator(dataset, mode, shuffle)
+
+        # Create batch iterator (with batch ops)
+        return self._batch_iterator(sample_iter, mode)
+
+    def __iter__(self) -> Iterator[Dict[str, mx.array]]:
+        """Iterate over training data."""
+        return self.get_loader("train")
+
+    @property
+    def batch_size(self) -> int:
+        """Get the batch size."""
+        return self.batch_op.batch_size
+
+    def benchmark(
+        self,
+        mode: str = "train",
+        num_batches: int = 100,
+        warmup: int = 10,
+    ) -> Dict[str, float]:
+        """Benchmark the pipeline throughput.
+
+        Args:
+            mode: Mode to benchmark.
+            num_batches: Number of batches to time.
+            warmup: Number of warmup batches.
+
+        Returns:
+            Dictionary with timing statistics.
+        """
+        import time
+
+        loader = self.get_loader(mode)
+
+        # Warmup
+        for i, _ in enumerate(loader):
+            if i >= warmup:
+                break
+
+        # Benchmark
+        loader = self.get_loader(mode)
+        times = []
+        batch_sizes = []
+
+        start = time.perf_counter()
+        for i, batch in enumerate(loader):
+            if i >= num_batches:
+                break
+            mx.eval(batch)  # Force evaluation
+            elapsed = time.perf_counter() - start
+            times.append(elapsed)
+            # Get actual batch size from first array
+            for v in batch.values():
+                batch_sizes.append(v.shape[0])
+                break
+            start = time.perf_counter()
+
+        if not times:
+            return {"error": "No batches produced"}
+
+        total_samples = sum(batch_sizes)
+        total_time = sum(times)
+
+        return {
+            "batches": len(times),
+            "total_samples": total_samples,
+            "total_time_sec": total_time,
+            "samples_per_sec": total_samples / total_time if total_time > 0 else 0,
+            "avg_batch_time_ms": (total_time / len(times)) * 1000,
+            "avg_batch_size": total_samples / len(times),
+        }

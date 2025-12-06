@@ -1,5 +1,7 @@
 """Operation classes used within FastMLX."""
 
+# Batch and filtering
+from .batch import Batch, DynamicBatch
 from .brightness_contrast import Brightness, Contrast, RandomBrightnessContrast
 
 # Pixel-level Augmentation Ops
@@ -14,6 +16,7 @@ from .elastic_transform import ElasticTransform, PerspectiveTransform, ShearTran
 
 # Basic Preprocessing Ops
 from .expand_dims import ExpandDims
+from .filtered_data import FilteredData
 from .focal_loss import FocalLoss
 from .gaussian_blur import GaussianBlur
 from .gaussian_noise import GaussianNoise
@@ -48,6 +51,10 @@ from .vertical_flip import VerticalFlip
 __all__ = [
     # Base
     "Op",
+    # Batch and filtering
+    "Batch",
+    "DynamicBatch",
+    "FilteredData",
     # Utility Ops
     "LambdaOp",
     "Delete",
