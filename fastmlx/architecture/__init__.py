@@ -25,6 +25,12 @@ from .transformer import (
 )
 from .siamese import SiameseNetwork, SiameseEncoder
 from .autoencoder import Autoencoder, VAE
+from .gan import (
+    DCGANGenerator,
+    DCGANDiscriminator,
+    SimpleGenerator,
+    SimpleDiscriminator,
+)
 
 __all__ = [
     # Classification - CNN
@@ -58,4 +64,8 @@ __all__ = [
     # Generative Models
     "Autoencoder",
     "VAE",
+    "DCGANGenerator",
+    "DCGANDiscriminator",
+    "SimpleGenerator",
+    "SimpleDiscriminator",
 ]
