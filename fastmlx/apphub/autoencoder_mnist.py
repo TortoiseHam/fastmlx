@@ -36,8 +36,8 @@ class VAEModelOp(Op):
         self.model = model
 
     def forward(self, data, state):
-        x = data[0]
-        x_recon, mu, log_var = self.model(x)
+        # data is a single array when there's one input (Network passes single value, not list)
+        x_recon, mu, log_var = self.model(data)
         return x_recon, mu, log_var
 
 

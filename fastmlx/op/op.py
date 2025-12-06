@@ -25,6 +25,24 @@ class Op:
         self.outputs: List[str] = [] if outputs is None else ([outputs] if isinstance(outputs, str) else list(outputs))
         self.mode: Optional[List[str]] = None if mode is None else ([mode] if isinstance(mode, str) else list(mode))
 
+    def should_run(self, current_mode: Optional[str]) -> bool:
+        """Check if this op should run in the given mode.
+
+        Args:
+            current_mode: The current execution mode ("train", "eval", etc.).
+
+        Returns:
+            True if the op should run, False otherwise.
+        """
+        # If no mode restriction, always run
+        if self.mode is None:
+            return True
+        # If no current mode specified, run all ops
+        if current_mode is None:
+            return True
+        # Check if current mode is in the op's allowed modes
+        return current_mode in self.mode
+
     def forward(self, data: Any, state: MutableMapping[str, Any]) -> Any:
         """Execute the operation.
 

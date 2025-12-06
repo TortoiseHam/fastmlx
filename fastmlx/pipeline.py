@@ -42,6 +42,7 @@ def _process_sample(
     sample: MutableMapping[str, mx.array],
     ops: List,
     state: Optional[MutableMapping[str, object]] = None,
+    mode: Optional[str] = None,
 ) -> MutableMapping[str, mx.array]:
     """Apply Ops to a single sample.
 
@@ -49,6 +50,7 @@ def _process_sample(
         sample: Dictionary of sample data.
         ops: List of ops to apply.
         state: Optional state dictionary.
+        mode: Current execution mode ("train", "eval", etc.).
 
     Returns:
         Processed sample dictionary.
@@ -57,9 +59,15 @@ def _process_sample(
         PipelineError: If processing fails.
     """
     if state is None:
-        state = {}
+        state = {"mode": mode}
+    else:
+        state["mode"] = mode
 
     for i, op in enumerate(ops):
+        # Check if op should run in current mode
+        if hasattr(op, "should_run") and not op.should_run(mode):
+            continue
+
         op_name = f"Op {i} ({op.__class__.__name__})"
 
         # Validate inputs
@@ -119,19 +127,25 @@ class Pipeline:
 
     def _apply_ops(
         self,
-        batch: MutableMapping[str, mx.array]
+        batch: MutableMapping[str, mx.array],
+        mode: Optional[str] = None
     ) -> MutableMapping[str, mx.array]:
         """Apply ops to a batch of data.
 
         Args:
             batch: Dictionary of batched arrays.
+            mode: Current execution mode ("train", "eval", etc.).
 
         Returns:
             Processed batch dictionary.
         """
-        state: MutableMapping[str, object] = {}
+        state: MutableMapping[str, object] = {"mode": mode}
 
         for i, op in enumerate(self.ops):
+            # Check if op should run in current mode
+            if hasattr(op, "should_run") and not op.should_run(mode):
+                continue
+
             op_name = f"Op {i} ({op.__class__.__name__})"
 
             # Validate inputs
@@ -152,22 +166,33 @@ class Pipeline:
 
         return batch
 
-    def _loader(self, dataset: Iterable) -> Iterator[MutableMapping[str, object]]:
+    def _loader(
+        self,
+        dataset: Iterable,
+        mode: str = "train",
+        shuffle: bool = False
+    ) -> Iterator[MutableMapping[str, object]]:
         """Create an iterator over processed batches.
 
         Args:
             dataset: The dataset to iterate over.
+            mode: Current execution mode ("train", "eval", etc.).
+            shuffle: Whether to shuffle the data.
 
         Yields:
             Processed batch dictionaries.
         """
+        import numpy as np
+
         if isinstance(dataset, dx.Buffer):
             # MLX Data buffer - use streaming
             buffer = dataset
+            if shuffle:
+                buffer = buffer.shuffle()
 
             def transform(sample: MutableMapping[str, object]) -> MutableMapping[str, object]:
                 mx_sample = {k: mx.array(v) for k, v in sample.items()}
-                return _process_sample(mx_sample, self.ops, {})
+                return _process_sample(mx_sample, self.ops, {}, mode=mode)
 
             stream = buffer.sample_transform(transform)
             stream = stream.batch(self.batch_size)
@@ -188,9 +213,15 @@ class Pipeline:
             if size == 0:
                 return  # Empty dataset
 
+            # Create index array for shuffling
+            indices = np.arange(size)
+            if shuffle:
+                np.random.shuffle(indices)
+
             for start in range(0, size, self.batch_size):
-                batch = {k: v[start:start + self.batch_size] for k, v in arrays.items()}
-                batch = self._apply_ops(batch)
+                batch_indices = indices[start:start + self.batch_size]
+                batch = {k: v[batch_indices] for k, v in arrays.items()}
+                batch = self._apply_ops(batch, mode=mode)
                 yield batch
 
         else:
@@ -203,11 +234,16 @@ class Pipeline:
             if len(data_list) == 0:
                 return  # Empty dataset
 
+            if shuffle:
+                import random
+                data_list = data_list.copy()
+                random.shuffle(data_list)
+
             buffer = dx.buffer_from_vector(data_list)
 
             def transform(sample: MutableMapping[str, object]) -> MutableMapping[str, object]:
                 mx_sample = {k: mx.array(v) for k, v in sample.items()}
-                return _process_sample(mx_sample, self.ops, {})
+                return _process_sample(mx_sample, self.ops, {}, mode=mode)
 
             stream = buffer.sample_transform(transform)
             stream = stream.batch(self.batch_size)
@@ -217,11 +253,16 @@ class Pipeline:
             for batch in stream:
                 yield {k: mx.array(v) for k, v in batch.items()}
 
-    def get_loader(self, mode: str = "train") -> Iterator[MutableMapping[str, object]]:
+    def get_loader(
+        self,
+        mode: str = "train",
+        shuffle: Optional[bool] = None
+    ) -> Iterator[MutableMapping[str, object]]:
         """Get a data loader for the specified mode.
 
         Args:
             mode: Either 'train' or 'eval'.
+            shuffle: Whether to shuffle the data. If None, shuffles for train mode only.
 
         Returns:
             Iterator yielding batch dictionaries.
@@ -237,4 +278,8 @@ class Pipeline:
         if dataset is None:
             raise ValueError(f"No dataset available for mode '{mode}'")
 
-        return self._loader(dataset)
+        # Default: shuffle for training, no shuffle for eval
+        if shuffle is None:
+            shuffle = (mode == "train")
+
+        return self._loader(dataset, mode=mode, shuffle=shuffle)

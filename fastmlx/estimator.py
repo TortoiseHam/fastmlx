@@ -239,6 +239,11 @@ class Estimator:
                 batch = self._cast_batch_for_amp(batch)
                 state["batch"] = batch
 
+                # Batch begin callbacks
+                for t in self.traces:
+                    if hasattr(t, "on_batch_begin"):
+                        t.on_batch_begin(batch, state)
+
                 # Run network forward/backward
                 try:
                     self.network.run(batch, state)
@@ -350,6 +355,11 @@ class Estimator:
             batch = self._cast_batch_for_amp(batch)
             eval_state["batch"] = batch
 
+            # Batch begin callbacks
+            for t in self.traces:
+                if hasattr(t, "on_batch_begin"):
+                    t.on_batch_begin(batch, eval_state)
+
             try:
                 self.network.run(batch, eval_state)
             except Exception as e:
@@ -422,12 +432,18 @@ class Estimator:
             batch = self._cast_batch_for_amp(batch)
             state["batch"] = batch
 
+            # Batch begin callbacks
+            for t in self.traces:
+                if hasattr(t, "on_batch_begin"):
+                    t.on_batch_begin(batch, state)
+
             try:
                 self.network.run(batch, state)
             except Exception as e:
                 self._log(f"FastMLX-Test-Error: step {step}; error: {e}", level=0)
                 raise
 
+            # Batch end callbacks
             for t in self.traces:
                 if hasattr(t, "on_batch_end"):
                     t.on_batch_end(batch, state)
