@@ -6,10 +6,10 @@ from typing import Any, MutableMapping, Tuple
 
 import mlx.core as mx
 
-from .op import Op
+from .op import LossOp
 
 
-class TripletLoss(Op):
+class TripletLoss(LossOp):
     """Triplet loss for metric learning.
 
     Minimizes distance between anchor and positive, while maximizing
@@ -75,7 +75,7 @@ class TripletLoss(Op):
             return mx.sum(mx.abs(x1 - x2) ** self.p, axis=-1) ** (1.0 / self.p)
 
 
-class ContrastiveLoss(Op):
+class ContrastiveLoss(LossOp):
     """Contrastive loss for siamese networks.
 
     Pulls similar pairs together and pushes dissimilar pairs apart.
@@ -138,7 +138,7 @@ class ContrastiveLoss(Op):
             return loss
 
 
-class CenterLoss(Op):
+class CenterLoss(LossOp):
     """Center loss for feature learning.
 
     Minimizes the distance between features and their corresponding
@@ -226,7 +226,7 @@ class CenterLoss(Op):
         self.centers = mx.stack(centers_list, axis=0)
 
 
-class CosineSimilarityLoss(Op):
+class CosineSimilarityLoss(LossOp):
     """Cosine similarity loss for embedding learning.
 
     Optimizes embeddings to have high cosine similarity for similar

@@ -6,10 +6,10 @@ from typing import Any, MutableMapping, Sequence
 
 import mlx.core as mx
 
-from .op import Op
+from .op import LossOp
 
 
-class SmoothL1Loss(Op):
+class SmoothL1Loss(LossOp):
     """Compute the Smooth L1 (Huber) loss.
 
     Smooth L1 loss is less sensitive to outliers than MSE and behaves like L1 for

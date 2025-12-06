@@ -6,10 +6,10 @@ from typing import Any, MutableMapping, Sequence
 
 import mlx.core as mx
 
-from .op import Op
+from .op import LossOp
 
 
-class DiceLoss(Op):
+class DiceLoss(LossOp):
     """Compute the Dice loss for segmentation tasks.
 
     Dice loss is based on the Sorensen-Dice coefficient, measuring overlap between

@@ -11,6 +11,7 @@ import mlx.core as mx
 from .backend.amp import AMPConfig, GradScaler, cast_to_dtype
 from .network import Network
 from .pipeline import Pipeline
+from .summary import Summary
 
 
 class Estimator:
@@ -52,6 +53,11 @@ class Estimator:
         >>> # Mixed precision training
         >>> estimator = Estimator(..., mixed_precision=True)
         >>> estimator = Estimator(..., mixed_precision="bfloat16")
+
+        >>> # Named experiment for tracking
+        >>> estimator = Estimator(..., experiment_name="cifar10_resnet")
+        >>> summary = estimator.fit()
+        >>> summary.save("results/")
     """
 
     def __init__(
@@ -62,7 +68,8 @@ class Estimator:
         traces: Optional[Iterable[object]] = None,
         log_interval: int = 100,
         verbose: int = 2,
-        mixed_precision: Union[bool, str, AMPConfig, None] = None
+        mixed_precision: Union[bool, str, AMPConfig, None] = None,
+        experiment_name: str = "experiment",
     ) -> None:
         self.pipeline: Pipeline = pipeline
         self.network: Network = network
@@ -72,6 +79,10 @@ class Estimator:
         self.verbose = verbose
         self.global_step: int = 0
         self.current_epoch: int = 0
+        self.experiment_name: str = experiment_name
+
+        # Create summary for tracking metrics
+        self.summary: Summary = Summary(name=experiment_name)
 
         # Setup mixed precision
         self.amp_config: Optional[AMPConfig] = self._setup_amp(mixed_precision)
@@ -204,16 +215,85 @@ class Estimator:
 
         return batch
 
-    def fit(self) -> MutableMapping[str, object]:
+    def _warmup(self) -> None:
+        """Validate the configuration by running a single batch.
+
+        This catches configuration errors (missing keys, shape mismatches)
+        before the full training loop starts.
+
+        Raises:
+            Various exceptions if configuration is invalid.
+        """
+        self._log("FastMLX: Running warmup validation...", level=2)
+
+        # Validate network ops
+        warnings = self.network.validate_ops()
+        for warning in warnings:
+            self._log(f"FastMLX-Warning: {warning}", level=1)
+
+        # Get a single batch from training data
+        loader = self.pipeline.get_loader("train")
+        try:
+            batch = next(iter(loader))
+        except StopIteration:
+            raise ValueError("Pipeline returned no data. Check your train_data.")
+
+        # Cast for AMP if enabled
+        batch = self._cast_batch_for_amp(batch)
+
+        # Run through network in train mode
+        state: MutableMapping[str, Any] = {"mode": "train", "epoch": 0}
+
+        try:
+            self.network.run(batch, state)
+        except Exception as e:
+            raise RuntimeError(
+                f"Warmup validation failed during training forward pass: {e}\n"
+                f"Available batch keys: {list(batch.keys())}"
+            ) from e
+
+        # Also validate eval mode if eval_data exists
+        if self.pipeline.eval_data is not None:
+            eval_loader = self.pipeline.get_loader("eval")
+            try:
+                eval_batch = next(iter(eval_loader))
+            except StopIteration:
+                self._log("FastMLX-Warning: eval_data returned no batches", level=1)
+                return
+
+            eval_batch = self._cast_batch_for_amp(eval_batch)
+            eval_state: MutableMapping[str, Any] = {"mode": "eval", "epoch": 0}
+
+            try:
+                self.network.run(eval_batch, eval_state)
+            except Exception as e:
+                raise RuntimeError(
+                    f"Warmup validation failed during eval forward pass: {e}\n"
+                    f"Available batch keys: {list(eval_batch.keys())}"
+                ) from e
+
+        self._log("FastMLX: Warmup validation passed.", level=2)
+
+    def fit(self, warmup: bool = True) -> Summary:
         """Train the network with periodic logging.
 
+        Args:
+            warmup: If True (default), validate configuration before training
+                by running a single batch through the network.
+
         Returns:
-            Final training state dictionary containing metrics.
+            Summary object containing all metrics history from training.
+            Use summary.get_values("loss", mode="train") to access specific metrics,
+            or summary.save("results/") to persist the results.
 
         Note:
             Training can be stopped early by traces that set
             ``state['should_stop'] = True`` (e.g., EarlyStopping).
         """
+        # Run warmup validation
+        if warmup:
+            self._warmup()
+
         state: MutableMapping[str, object] = {"should_stop": False}
         step = self.global_step
         start_time = time.time()
@@ -302,6 +382,15 @@ class Estimator:
                 if hasattr(t, "on_epoch_end") and self._trace_should_run(t, "train"):
                     t.on_epoch_end(state)
 
+            # Record training metrics to summary
+            metrics = state.get("metrics", {})
+            for metric_name, metric_value in metrics.items():
+                if isinstance(metric_value, (int, float)):
+                    self.summary.add(
+                        metric_name, metric_value,
+                        epoch=epoch, step=step, mode="train"
+                    )
+
             epoch_time = time.time() - epoch_start
             self._log(
                 f"FastMLX-Train: step: {step}; epoch: {epoch+1}; epoch_time: {epoch_time:.2f} sec;",
@@ -328,7 +417,15 @@ class Estimator:
             f"FastMLX-Finish: step: {step}; model_lr: {lr}; total_time: {total_time:.2f} sec;",
             level=1
         )
-        return state
+
+        # Store final state in summary metadata
+        self.summary.metadata["total_time"] = total_time
+        self.summary.metadata["final_step"] = step
+        self.summary.metadata["final_epoch"] = self.current_epoch
+        if lr is not None:
+            self.summary.metadata["final_lr"] = lr
+
+        return self.summary
 
     def _run_evaluation(
         self,
@@ -411,6 +508,15 @@ class Estimator:
         loss_key = self._get_loss_key_name()
         if loss_count:
             eval_state["metrics"][loss_key] = total_loss / loss_count
+
+        # Record eval metrics to summary
+        eval_metrics = eval_state.get("metrics", {})
+        for metric_name, metric_value in eval_metrics.items():
+            if isinstance(metric_value, (int, float)):
+                self.summary.add(
+                    metric_name, metric_value,
+                    epoch=epoch, step=step, mode="eval"
+                )
 
         acc = eval_state["metrics"].get("accuracy")
         loss_metric = eval_state["metrics"].get(loss_key)

@@ -124,20 +124,29 @@ class Network:
         return store
 
     def get_loss_keys(self) -> Set[str]:
-        """Get the set of output keys that appear to be loss values.
+        """Get the set of output keys that are loss values.
+
+        Uses the is_loss property on ops to identify loss operations.
+        Falls back to string matching for backwards compatibility.
 
         Returns:
-            Set of key names that contain 'loss' or are common loss names.
+            Set of key names from loss operations.
         """
         keys: Set[str] = set()
         common_loss_names = {"ce", "loss", "mse", "mae", "bce", "focal", "dice", "hinge"}
 
         for op in self.ops:
             if isinstance(op, Op) and op.outputs:
-                for k in op.outputs:
-                    k_lower = k.lower()
-                    if "loss" in k_lower or k_lower in common_loss_names:
+                # Use is_loss property if available
+                if hasattr(op, "is_loss") and op.is_loss:
+                    for k in op.outputs:
                         keys.add(k)
+                else:
+                    # Fallback to string matching for backwards compatibility
+                    for k in op.outputs:
+                        k_lower = k.lower()
+                        if "loss" in k_lower or k_lower in common_loss_names:
+                            keys.add(k)
         return keys
 
     def validate_ops(self) -> List[str]:

@@ -6,10 +6,10 @@ from typing import Any, MutableMapping, Sequence
 
 import mlx.core as mx
 
-from .op import Op
+from .op import LossOp
 
 
-class HingeLoss(Op):
+class HingeLoss(LossOp):
     """Compute the hinge loss for margin-based classification.
 
     Hinge loss is commonly used for training SVMs and other maximum-margin classifiers.

@@ -6,10 +6,10 @@ from typing import Any, MutableMapping, Sequence
 
 import mlx.core as mx
 
-from .op import Op
+from .op import LossOp
 
 
-class L1Loss(Op):
+class L1Loss(LossOp):
     """Compute the L1 (Mean Absolute Error) loss.
 
     This loss computes the mean of absolute differences between predictions and targets.

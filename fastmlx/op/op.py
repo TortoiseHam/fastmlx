@@ -124,6 +124,18 @@ class Op:
             None if mode is None else ([mode] if isinstance(mode, str) else list(mode))
         )
 
+    @property
+    def is_loss(self) -> bool:
+        """Whether this op computes a loss value.
+
+        Loss ops should override this to return True. This is used by Network
+        to identify which outputs are losses for logging and gradient computation.
+
+        Returns:
+            True if this op computes a loss, False otherwise.
+        """
+        return False
+
     def should_run(self, current_mode: Optional[str]) -> bool:
         """Check if this op should run in the given mode.
 
@@ -153,3 +165,30 @@ class Op:
             Output data (single array or tuple of arrays).
         """
         raise NotImplementedError
+
+
+class LossOp(Op):
+    """Base class for loss computation operations.
+
+    LossOp is a specialized Op that computes loss values. It sets is_loss=True
+    so that the Network can automatically identify loss outputs for logging
+    and gradient computation.
+
+    Subclasses should override forward() to compute the loss value.
+
+    Args:
+        inputs: Names of input keys (typically predictions and labels).
+        outputs: Name of output key for the loss value.
+        mode: When to execute this op (default: all modes).
+
+    Example:
+        >>> class MyLoss(LossOp):
+        ...     def forward(self, data, state):
+        ...         y_pred, y_true = data
+        ...         return mx.mean((y_pred - y_true) ** 2)
+    """
+
+    @property
+    def is_loss(self) -> bool:
+        """Loss ops always return True for is_loss."""
+        return True

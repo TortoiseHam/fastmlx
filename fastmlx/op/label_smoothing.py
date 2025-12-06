@@ -7,10 +7,10 @@ from typing import Any, MutableMapping, Optional, Tuple, Union
 import mlx.core as mx
 import mlx.nn as nn
 
-from .op import Op
+from .op import LossOp
 
 
-class LabelSmoothingCrossEntropy(Op):
+class LabelSmoothingCrossEntropy(LossOp):
     """Cross entropy loss with label smoothing.
 
     Label smoothing helps prevent overconfidence by softening the target
@@ -79,7 +79,7 @@ class LabelSmoothingCrossEntropy(Op):
             return loss
 
 
-class WeightedCrossEntropy(Op):
+class WeightedCrossEntropy(LossOp):
     """Cross entropy loss with class weights for imbalanced datasets.
 
     Args:
