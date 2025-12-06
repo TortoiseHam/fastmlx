@@ -6,8 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import mlx.core as mx
 
-Array = mx.array
-
 
 class TimeSeriesDataset:
     """Dataset for univariate or multivariate time series forecasting.
@@ -142,7 +140,7 @@ class TimeSeriesDataset:
 
         return normalized_data, params
 
-    def denormalize(self, data: Array, column: Optional[int] = None) -> Array:
+    def denormalize(self, data: mx.array, column: Optional[int] = None) -> mx.array:
         """Denormalize data back to original scale."""
         if not self.normalization_params:
             return data
@@ -166,7 +164,7 @@ class TimeSeriesDataset:
     def __len__(self) -> int:
         return self._num_samples
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         start = idx * self.stride
         input_end = start + self.input_length
         output_end = input_end + self.output_length
@@ -239,7 +237,7 @@ class WindowedDataset:
     def __len__(self) -> int:
         return len(self.windows)
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         window = self.windows[idx]
 
         if self.flatten:
@@ -286,8 +284,8 @@ class OHLCVDataset:
         input_length: int = 30,
         output_length: int = 1,
         target: str = "close",
-        features: List[str] = None,
-        normalize: bool = True
+        features: Optional[List[str]] = None,
+        normalize: bool = True,
     ) -> None:
         # Load from CSV if path
         if isinstance(data, str):
@@ -444,7 +442,7 @@ class OHLCVDataset:
     def __len__(self) -> int:
         return self._num_samples
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         input_end = idx + self.input_length
 
         # Input features

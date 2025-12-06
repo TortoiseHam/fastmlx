@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, MutableMapping, Tuple, Union
+from typing import Any, MutableMapping, Optional, Tuple, Union
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -101,7 +101,7 @@ class WeightedCrossEntropy(Op):
         self,
         inputs: Tuple[str, str],
         outputs: str,
-        weights: Union[list, mx.array] = None,
+        weights: Optional[Union[list, mx.array]] = None,
         reduction: str = "mean"
     ) -> None:
         super().__init__(inputs, outputs)

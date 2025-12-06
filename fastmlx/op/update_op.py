@@ -12,7 +12,6 @@ from .op import Op
 if TYPE_CHECKING:
     from ..backend.amp import GradScaler
 
-Array = mx.array
 
 
 class UpdateOp(Op):
@@ -249,7 +248,7 @@ class UpdateOp(Op):
         self._accumulated_grads = None
         self._accumulation_count = 0
 
-    def forward(self, data: Array, state: MutableMapping[str, Any]) -> None:
+    def forward(self, data: mx.array, state: MutableMapping[str, Any]) -> None:
         """Compute gradients and update model parameters.
 
         Args:

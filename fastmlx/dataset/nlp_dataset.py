@@ -8,8 +8,6 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import mlx.core as mx
 
-Array = mx.array
-
 
 class TextDataset:
     """Dataset for text classification and other text-based tasks.
@@ -130,9 +128,9 @@ class TextDataset:
     def __len__(self) -> int:
         return len(self.texts)
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         encoded = self._encode(self.texts[idx])
-        result: Dict[str, Array] = {"x": mx.array(encoded)}
+        result: Dict[str, mx.array] = {"x": mx.array(encoded)}
 
         if self.labels is not None:
             result["y"] = mx.array(self.labels[idx])
@@ -294,7 +292,7 @@ class SequenceDataset:
     def __len__(self) -> int:
         return len(self.source_texts)
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         source_encoded = self._encode_source(self.source_texts[idx])
         target_encoded = self._encode_target(self.target_texts[idx])
 
@@ -361,8 +359,8 @@ class TokenizedDataset:
     def __len__(self) -> int:
         return len(self.input_ids)
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
-        result: Dict[str, Array] = {
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+        result: Dict[str, mx.array] = {
             "input_ids": mx.array(self.input_ids[idx]),
             "x": mx.array(self.input_ids[idx]),  # Alias for compatibility
         }
@@ -449,7 +447,7 @@ class LanguageModelDataset:
     def __len__(self) -> int:
         return self._num_samples
 
-    def __getitem__(self, idx: int) -> Dict[str, Array]:
+    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
         start = idx * self.stride
         end = start + self.seq_length
 

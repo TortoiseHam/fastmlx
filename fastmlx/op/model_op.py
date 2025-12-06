@@ -7,8 +7,6 @@ import mlx.nn as nn
 
 from .op import Op
 
-Array = mx.array
-
 
 class ModelOp(Op):
     """Forward pass of an :class:`mlx.nn.Module`."""
@@ -17,5 +15,5 @@ class ModelOp(Op):
         super().__init__(inputs, outputs)
         self.model: nn.Module = model
 
-    def forward(self, data: Any, state: MutableMapping[str, Any]) -> Array:
+    def forward(self, data: Any, state: MutableMapping[str, Any]) -> mx.array:
         return self.model(data)
