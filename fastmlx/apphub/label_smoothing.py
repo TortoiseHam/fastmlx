@@ -55,8 +55,7 @@ class LabelSmoothingCrossEntropy(Op):
         # Convert to one-hot if needed
         if y_true.ndim == 1 or (y_true.ndim == 2 and y_true.shape[-1] == 1):
             y_true = y_true.flatten().astype(mx.int32)
-            one_hot = mx.zeros((y_true.shape[0], num_classes))
-            one_hot = one_hot.at[mx.arange(y_true.shape[0]), y_true].add(1.0)
+            one_hot = mx.one_hot(y_true, num_classes)
         else:
             one_hot = y_true
 

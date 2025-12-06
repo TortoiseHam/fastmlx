@@ -99,11 +99,18 @@ class CutMix(Op):
         # Calculate actual lambda based on cut area
         actual_lam = 1 - (x2 - x1) * (y2 - y1) / (height * width)
 
-        # Create mixed images
-        mixed_images = images.astype(mx.float32)
-        # Replace the cut region with shuffled image
-        patch = shuffled_images[:, y1:y2, x1:x2, :]
-        mixed_images = mixed_images.at[:, y1:y2, x1:x2, :].set(patch)
+        # Create mixed images using mask-based blending (MLX-compatible)
+        # Create a mask that is 1 in the cut region, 0 elsewhere
+        mask = mx.zeros((1, height, width, 1))
+        # Build the mask by constructing the full array
+        mask_np = np.zeros((1, height, width, 1), dtype=np.float32)
+        mask_np[:, y1:y2, x1:x2, :] = 1.0
+        mask = mx.array(mask_np)
+
+        # Blend images using mask
+        images_float = images.astype(mx.float32)
+        shuffled_float = shuffled_images.astype(mx.float32)
+        mixed_images = images_float * (1 - mask) + shuffled_float * mask
 
         # Mix labels
         mixed_labels = actual_lam * labels + (1 - actual_lam) * shuffled_labels
