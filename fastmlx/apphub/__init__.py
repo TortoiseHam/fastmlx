@@ -23,9 +23,15 @@ Training Techniques:
     - transfer_learning: Fine-tuning pretrained models
     - curriculum_learning: Difficulty-based curriculum training
     - focal_loss_imbalanced: Focal loss for class imbalance
+    - label_smoothing: Label smoothing regularization
+    - gradient_clipping: Gradient clipping for stable training
+    - pseudo_labeling: Semi-supervised learning with pseudo labels
+    - stochastic_weight_averaging: SWA for better generalization
+    - progressive_resizing: Multi-scale training with increasing resolution
 
 Metric Learning:
     - siamese_mnist: Siamese network for one-shot learning
+    - triplet_loss: Triplet loss for embedding learning
 
 Self-Supervised Learning:
     - simclr_cifar10: SimCLR contrastive learning
@@ -33,6 +39,7 @@ Self-Supervised Learning:
 Generative Models:
     - autoencoder_mnist: Autoencoder and VAE on MNIST
     - dcgan_mnist: Deep Convolutional GAN
+    - conditional_gan: Class-conditional GAN
 
 Language Modeling:
     - gpt_language_model: Character-level GPT on Shakespeare
@@ -45,6 +52,9 @@ Time Series:
 
 Ensemble Learning:
     - model_ensemble: Combining multiple models for improved predictions
+
+Anomaly Detection:
+    - anomaly_detection: Autoencoder-based anomaly detection
 """
 
 from . import (
@@ -66,14 +76,22 @@ from . import (
     transfer_learning,
     curriculum_learning,
     focal_loss_imbalanced,
+    label_smoothing,
+    gradient_clipping,
+    pseudo_labeling,
+    stochastic_weight_averaging,
+    progressive_resizing,
     siamese_mnist,
+    triplet_loss,
     simclr_cifar10,
     autoencoder_mnist,
     dcgan_mnist,
+    conditional_gan,
     gpt_language_model,
     tabular_dnn,
     time_series_forecasting,
     model_ensemble,
+    anomaly_detection,
 )
 
 __all__ = [
@@ -98,13 +116,20 @@ __all__ = [
     "transfer_learning",
     "curriculum_learning",
     "focal_loss_imbalanced",
+    "label_smoothing",
+    "gradient_clipping",
+    "pseudo_labeling",
+    "stochastic_weight_averaging",
+    "progressive_resizing",
     # Metric Learning
     "siamese_mnist",
+    "triplet_loss",
     # Self-Supervised Learning
     "simclr_cifar10",
     # Generative Models
     "autoencoder_mnist",
     "dcgan_mnist",
+    "conditional_gan",
     # Language Modeling
     "gpt_language_model",
     # Tabular Data
@@ -113,4 +138,6 @@ __all__ = [
     "time_series_forecasting",
     # Ensemble Learning
     "model_ensemble",
+    # Anomaly Detection
+    "anomaly_detection",
 ]
