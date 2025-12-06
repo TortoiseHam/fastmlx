@@ -10,7 +10,23 @@ from .generator_dataset import (
     InterleaveDataset,
 )
 
+# NLP datasets
+from .nlp_dataset import (
+    TextDataset,
+    SequenceDataset,
+    TokenizedDataset,
+    LanguageModelDataset,
+)
+
+# Time series datasets
+from .timeseries_dataset import (
+    TimeSeriesDataset,
+    WindowedDataset,
+    OHLCVDataset,
+)
+
 __all__ = [
+    # Core datasets
     "MLXDataset",
     "CSVDataset",
     "DirDataset",
@@ -19,4 +35,13 @@ __all__ = [
     "BatchDataset",
     "CombinedDataset",
     "InterleaveDataset",
+    # NLP datasets
+    "TextDataset",
+    "SequenceDataset",
+    "TokenizedDataset",
+    "LanguageModelDataset",
+    # Time series datasets
+    "TimeSeriesDataset",
+    "WindowedDataset",
+    "OHLCVDataset",
 ]

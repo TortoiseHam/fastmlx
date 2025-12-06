@@ -97,7 +97,7 @@ class EarlyStopping(Trace):
             self.wait += 1
             if self.wait >= self.patience:
                 self.stopped_epoch = epoch
-                state['stop_training'] = True
+                state['should_stop'] = True
                 print(f"FastMLX-EarlyStopping: Stopping training at epoch {epoch}")
                 if self.restore_best_weights and self.best_weights is not None:
                     print(f"FastMLX-EarlyStopping: Restoring best weights")
@@ -205,7 +205,7 @@ class TerminateOnNaN(Trace):
             loss_val = float(loss)
 
         if math.isnan(loss_val) or math.isinf(loss_val):
-            state['stop_training'] = True
+            state['should_stop'] = True
             print(f"FastMLX-TerminateOnNaN: Invalid loss value {loss_val}, stopping training")
 
 

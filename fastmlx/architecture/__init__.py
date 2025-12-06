@@ -9,9 +9,23 @@ from .wideresnet import (
     WideResNet28_10,
     WideResNet40_4,
 )
+from .transformer import (
+    MultiHeadAttention,
+    TransformerEncoderBlock,
+    TransformerDecoderBlock,
+    TransformerEncoder,
+    TransformerDecoder,
+    PositionalEncoding,
+    VisionTransformer,
+    ViT_Tiny,
+    ViT_Small,
+    ViT_Base,
+    ViT_Large,
+    GPT,
+)
 
 __all__ = [
-    # Classification
+    # Classification - CNN
     "LeNet",
     "ResNet9",
     "WideResNet",
@@ -21,4 +35,19 @@ __all__ = [
     # Segmentation
     "UNet",
     "AttentionUNet",
+    # Transformer Components
+    "MultiHeadAttention",
+    "TransformerEncoderBlock",
+    "TransformerDecoderBlock",
+    "TransformerEncoder",
+    "TransformerDecoder",
+    "PositionalEncoding",
+    # Vision Transformers
+    "VisionTransformer",
+    "ViT_Tiny",
+    "ViT_Small",
+    "ViT_Base",
+    "ViT_Large",
+    # Language Models
+    "GPT",
 ]

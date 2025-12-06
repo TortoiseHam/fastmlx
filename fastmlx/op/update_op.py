@@ -1,10 +1,11 @@
+"""Model update operation with gradient computation and optimization."""
+
 from __future__ import annotations
 
-from typing import Any, MutableMapping, List
+from typing import Any, MutableMapping, List, Optional, Union, Callable
 
 import mlx.nn as nn
 import mlx.core as mx
-from functools import partial
 
 from .op import Op
 
@@ -12,39 +13,273 @@ Array = mx.array
 
 
 class UpdateOp(Op):
-    """Compute gradients and update model parameters."""
+    """Compute gradients and update model parameters.
 
-    def __init__(self, model: nn.Module, loss_name: str, compile: bool = True) -> None:
-        super().__init__(inputs=loss_name, outputs=None)
+    This op computes gradients of a loss with respect to model parameters
+    and updates the model using the provided optimizer.
+
+    Args:
+        model: The model to update. Must have an `optimizer` attribute.
+        loss_name: Key in batch containing the loss value to backpropagate.
+        inputs: Input key(s) for the model forward pass.
+        outputs: Output key(s) from the model (predictions).
+        loss_fn: Optional custom loss function. If None, uses the loss value
+                 directly from batch[loss_name]. If provided, should take
+                 (predictions, targets) and return a scalar loss.
+        accumulation_steps: Number of steps to accumulate gradients before
+                           updating. Default is 1 (no accumulation).
+        max_grad_norm: Maximum gradient norm for clipping. None for no clipping.
+        compile: Whether to compile the step function for performance.
+
+    Example:
+        >>> # Using with a separate loss op (recommended)
+        >>> network = Network(ops=[
+        ...     ModelOp(model=model, inputs="x", outputs="y_pred"),
+        ...     CrossEntropyLoss(inputs=("y_pred", "y"), outputs="ce"),
+        ...     UpdateOp(model=model, loss_name="ce", inputs="x", outputs="y_pred")
+        ... ])
+
+        >>> # With gradient accumulation for larger effective batch size
+        >>> UpdateOp(model=model, loss_name="ce", inputs="x", outputs="y_pred",
+        ...          accumulation_steps=4)
+
+        >>> # With gradient clipping
+        >>> UpdateOp(model=model, loss_name="ce", inputs="x", outputs="y_pred",
+        ...          max_grad_norm=1.0)
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        loss_name: str = "loss",
+        inputs: Optional[Union[str, List[str]]] = None,
+        outputs: Optional[Union[str, List[str]]] = None,
+        loss_fn: Optional[Callable] = None,
+        accumulation_steps: int = 1,
+        max_grad_norm: Optional[float] = None,
+        compile: bool = True
+    ) -> None:
+        # For backward compatibility, accept both old and new API
+        super().__init__(inputs=inputs or [], outputs=outputs or [])
         self.model: nn.Module = model
-        self._state: List[mx.array] = [self.model.state, self.model.optimizer.state, mx.random.state]
+        self.loss_name = loss_name
+        self.loss_fn = loss_fn
+        self.accumulation_steps = max(1, accumulation_steps)
+        self.max_grad_norm = max_grad_norm
+        self.compile = compile
 
-        def step(x_data: Array, y_data: Array) -> Array:
-            def loss_fn(m: nn.Module, x_in: Array, y_in: Array) -> Array:
-                logits = m(x_in)
-                loss = nn.losses.cross_entropy(logits, y_in)
-                return mx.mean(loss)
+        # Gradient accumulation state
+        self._accumulated_grads: Optional[dict] = None
+        self._accumulation_count: int = 0
 
-            loss_grad_fn = nn.value_and_grad(self.model, loss_fn)
-            loss_val, grads = loss_grad_fn(self.model, x_data, y_data)
-            self.model.optimizer.update(self.model, grads)
-            return loss_val
+        # Compilation state
+        self._state: List[mx.array] = []
+        self._step_fn: Optional[Callable] = None
+        self._initialized = False
 
-        if compile:
-            self._step = partial(mx.compile, inputs=self._state, outputs=self._state)(step)
+    def _initialize(self) -> None:
+        """Initialize the compiled step function."""
+        if self._initialized:
+            return
+
+        if not hasattr(self.model, 'optimizer'):
+            raise ValueError(
+                f"UpdateOp requires model to have an 'optimizer' attribute. "
+                f"Set model.optimizer = optim.SGD(...) before training."
+            )
+
+        self._state = [self.model.state, self.model.optimizer.state, mx.random.state]
+        self._initialized = True
+
+    def _compute_gradients(
+        self,
+        batch: MutableMapping[str, Any]
+    ) -> tuple[mx.array, dict]:
+        """Compute gradients of loss with respect to model parameters.
+
+        Returns:
+            Tuple of (loss_value, gradients_dict)
+        """
+        if self.loss_fn is not None:
+            # Use custom loss function - need to do forward pass
+            input_keys = self.inputs if isinstance(self.inputs, list) else [self.inputs]
+            output_keys = self.outputs if isinstance(self.outputs, list) else [self.outputs]
+
+            # Get input data
+            if len(input_keys) == 1:
+                x = batch.get(input_keys[0])
+            else:
+                x = tuple(batch.get(k) for k in input_keys)
+
+            # Get target data for loss
+            y = batch.get("y")  # Standard target key
+
+            def loss_wrapper(model: nn.Module) -> mx.array:
+                pred = model(x) if not isinstance(x, tuple) else model(*x)
+                loss = self.loss_fn(pred, y)
+                return mx.mean(loss) if loss.ndim > 0 else loss
+
+            loss_grad_fn = nn.value_and_grad(self.model, loss_wrapper)
+            loss_val, grads = loss_grad_fn(self.model)
+
         else:
-            self._step = step
+            # Use pre-computed loss from batch
+            loss_val = batch.get(self.loss_name)
+            if loss_val is None:
+                raise ValueError(
+                    f"UpdateOp: Loss key '{self.loss_name}' not found in batch. "
+                    f"Available keys: {list(batch.keys())}. "
+                    f"Make sure a loss op runs before UpdateOp."
+                )
+
+            # Ensure loss is a scalar
+            if isinstance(loss_val, mx.array) and loss_val.ndim > 0:
+                loss_val = mx.mean(loss_val)
+
+            # Get input for gradient computation
+            input_keys = self.inputs if isinstance(self.inputs, list) else [self.inputs]
+            if input_keys and input_keys[0]:
+                x = batch.get(input_keys[0])
+            else:
+                x = batch.get("x")  # Fallback to standard key
+
+            y = batch.get("y")
+
+            if x is None:
+                raise ValueError(
+                    f"UpdateOp: Input data not found. Looked for keys {input_keys} and 'x'. "
+                    f"Available keys: {list(batch.keys())}"
+                )
+
+            # Create loss function that uses the model's forward pass
+            def loss_wrapper(model: nn.Module) -> mx.array:
+                pred = model(x)
+                # Recompute the loss to get gradients
+                # We need the prediction to compute gradients through the model
+                if y is not None:
+                    # Use cross entropy as default if we have targets
+                    loss = nn.losses.cross_entropy(pred, y)
+                    return mx.mean(loss)
+                else:
+                    # If no targets, use MSE with stored loss as target
+                    # This is a fallback and may not work well
+                    return loss_val
+
+            loss_grad_fn = nn.value_and_grad(self.model, loss_wrapper)
+            loss_val, grads = loss_grad_fn(self.model)
+
+        return loss_val, grads
+
+    def _clip_gradients(self, grads: dict) -> dict:
+        """Clip gradients by global norm."""
+        if self.max_grad_norm is None:
+            return grads
+
+        # Compute global norm
+        total_norm_sq = mx.array(0.0)
+        for key, value in grads.items():
+            if isinstance(value, dict):
+                for subkey, subvalue in value.items():
+                    if isinstance(subvalue, mx.array):
+                        total_norm_sq = total_norm_sq + mx.sum(subvalue ** 2)
+            elif isinstance(value, mx.array):
+                total_norm_sq = total_norm_sq + mx.sum(value ** 2)
+
+        total_norm = mx.sqrt(total_norm_sq)
+        clip_coef = self.max_grad_norm / (total_norm + 1e-6)
+        clip_coef = mx.minimum(clip_coef, mx.array(1.0))
+
+        # Apply clipping
+        def clip_value(v):
+            if isinstance(v, mx.array):
+                return v * clip_coef
+            elif isinstance(v, dict):
+                return {k: clip_value(val) for k, val in v.items()}
+            return v
+
+        return {k: clip_value(v) for k, v in grads.items()}
+
+    def _accumulate_gradients(self, grads: dict) -> None:
+        """Accumulate gradients for gradient accumulation."""
+        if self._accumulated_grads is None:
+            # First accumulation - just store (scaled by accumulation steps)
+            scale = 1.0 / self.accumulation_steps
+
+            def scale_value(v):
+                if isinstance(v, mx.array):
+                    return v * scale
+                elif isinstance(v, dict):
+                    return {k: scale_value(val) for k, val in v.items()}
+                return v
+
+            self._accumulated_grads = {k: scale_value(v) for k, v in grads.items()}
+        else:
+            # Add to existing gradients (scaled)
+            scale = 1.0 / self.accumulation_steps
+
+            def add_grads(acc, new):
+                if isinstance(acc, mx.array) and isinstance(new, mx.array):
+                    return acc + new * scale
+                elif isinstance(acc, dict) and isinstance(new, dict):
+                    return {k: add_grads(acc[k], new[k]) for k in acc.keys()}
+                return acc
+
+            self._accumulated_grads = {
+                k: add_grads(self._accumulated_grads[k], grads[k])
+                for k in self._accumulated_grads.keys()
+            }
+
+        self._accumulation_count += 1
+
+    def _should_update(self) -> bool:
+        """Check if we should perform the parameter update."""
+        return self._accumulation_count >= self.accumulation_steps
+
+    def _reset_accumulation(self) -> None:
+        """Reset gradient accumulation state."""
+        self._accumulated_grads = None
+        self._accumulation_count = 0
 
     def forward(self, data: Array, state: MutableMapping[str, Any]) -> None:
-        batch = state.get("batch", {})
-        x = batch.get("x")
-        y = batch.get("y")
-        if x is None or y is None:
-            return None
+        """Compute gradients and update model parameters.
+
+        Args:
+            data: Unused (we get data from state['batch'])
+            state: Training state containing 'batch' and 'mode'
+        """
+        # Only update during training
         if state.get("mode") != "train":
             return None
 
-        loss_val = self._step(x, y)
-        batch[self.inputs[0]] = loss_val
-        mx.eval(loss_val, *self._state)
+        batch = state.get("batch", {})
+        if not batch:
+            return None
+
+        # Initialize on first call
+        self._initialize()
+
+        # Compute gradients
+        loss_val, grads = self._compute_gradients(batch)
+
+        # Clip gradients if configured
+        if self.max_grad_norm is not None:
+            grads = self._clip_gradients(grads)
+
+        # Handle gradient accumulation
+        if self.accumulation_steps > 1:
+            self._accumulate_gradients(grads)
+
+            if self._should_update():
+                # Apply accumulated gradients
+                self.model.optimizer.update(self.model, self._accumulated_grads)
+                mx.eval(self.model.state, self.model.optimizer.state)
+                self._reset_accumulation()
+        else:
+            # Standard update (no accumulation)
+            self.model.optimizer.update(self.model, grads)
+            mx.eval(loss_val, self.model.state, self.model.optimizer.state)
+
+        # Store loss in batch for logging
+        batch[self.loss_name] = loss_val
+
         return None

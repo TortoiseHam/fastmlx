@@ -27,6 +27,8 @@ from .gaussian_noise import GaussianNoise
 from .brightness_contrast import Brightness, Contrast, RandomBrightnessContrast
 from .color_jitter import ColorJitter, ToGray
 from .cutout import Cutout, GridMask, MixUp
+from .random_erasing import RandomErasing, GridDropout, ChannelDropout
+from .elastic_transform import ElasticTransform, PerspectiveTransform, ShearTransform
 
 # Loss Ops
 from .cross_entropy import CrossEntropy
@@ -36,6 +38,8 @@ from .focal_loss import FocalLoss
 from .dice_loss import DiceLoss
 from .hinge_loss import HingeLoss
 from .smooth_l1_loss import SmoothL1Loss
+from .label_smoothing import LabelSmoothingCrossEntropy, WeightedCrossEntropy
+from .metric_loss import TripletLoss, ContrastiveLoss, CenterLoss, CosineSimilarityLoss
 
 # Model Ops
 from .model_op import ModelOp
@@ -80,6 +84,12 @@ __all__ = [
     "Cutout",
     "GridMask",
     "MixUp",
+    "RandomErasing",
+    "GridDropout",
+    "ChannelDropout",
+    "ElasticTransform",
+    "PerspectiveTransform",
+    "ShearTransform",
     # Loss functions
     "CrossEntropy",
     "MeanSquaredError",
@@ -88,6 +98,12 @@ __all__ = [
     "DiceLoss",
     "HingeLoss",
     "SmoothL1Loss",
+    "LabelSmoothingCrossEntropy",
+    "WeightedCrossEntropy",
+    "TripletLoss",
+    "ContrastiveLoss",
+    "CenterLoss",
+    "CosineSimilarityLoss",
     # Model operations
     "ModelOp",
     "UpdateOp",

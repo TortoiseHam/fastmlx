@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any, MutableMapping, Sequence, Optional
 
 import mlx.core as mx
-import mlx.nn as nn
 
 from .op import Op
 
@@ -24,6 +23,12 @@ class FocalLoss(Op):
         alpha: Weighting factor for the rare class. If None, no weighting is applied.
         gamma: Focusing parameter. Higher values focus more on hard examples.
         reduction: How to reduce the loss. One of 'mean', 'sum', or 'none'.
+
+    Example:
+        >>> op = FocalLoss(["y_pred", "y"], "loss", gamma=2.0)
+        >>> y_pred = mx.array([[0.9, 0.1], [0.2, 0.8]])
+        >>> y_true = mx.array([0, 1])
+        >>> loss = op.forward([y_pred, y_true], {})
 
     Reference:
         Lin et al., "Focal Loss for Dense Object Detection", ICCV 2017.
@@ -49,17 +54,20 @@ class FocalLoss(Op):
 
         # Get probabilities via softmax if logits are provided
         probs = mx.softmax(y_pred, axis=-1)
+        num_classes = y_pred.shape[-1]
 
-        # Convert targets to one-hot if needed
-        if y_true.ndim == 1 or y_true.shape[-1] != y_pred.shape[-1]:
-            num_classes = y_pred.shape[-1]
-            y_true_onehot = mx.zeros((y_true.shape[0], num_classes))
-            y_true_flat = y_true.flatten().astype(mx.int32)
-            y_true_onehot = mx.zeros((y_true.shape[0], num_classes))
-            for i in range(y_true.shape[0]):
-                y_true_onehot = y_true_onehot.at[i, y_true_flat[i]].add(1.0)
+        # Convert targets to one-hot if needed (vectorized)
+        if y_true.ndim == 1 or y_true.shape[-1] != num_classes:
+            # Ensure y_true is integer indices
+            indices = y_true.flatten().astype(mx.int32)
+            batch_size = indices.shape[0]
+
+            # Create one-hot encoding using scatter-like operation
+            # eye matrix gives us one-hot rows that we can index into
+            eye = mx.eye(num_classes)
+            y_true_onehot = eye[indices]
         else:
-            y_true_onehot = y_true
+            y_true_onehot = y_true.astype(mx.float32)
 
         # Compute cross entropy
         ce = -y_true_onehot * mx.log(mx.clip(probs, 1e-7, 1.0))
