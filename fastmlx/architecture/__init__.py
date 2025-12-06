@@ -23,6 +23,8 @@ from .transformer import (
     ViT_Large,
     GPT,
 )
+from .siamese import SiameseNetwork, SiameseEncoder
+from .autoencoder import Autoencoder, VAE
 
 __all__ = [
     # Classification - CNN
@@ -50,4 +52,10 @@ __all__ = [
     "ViT_Large",
     # Language Models
     "GPT",
+    # Metric Learning
+    "SiameseNetwork",
+    "SiameseEncoder",
+    # Generative Models
+    "Autoencoder",
+    "VAE",
 ]
