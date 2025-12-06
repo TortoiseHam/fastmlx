@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, MutableMapping, Optional
+from typing import Any, Dict, Iterable, List, MutableMapping, Optional, Union
 import math
 import time
 
@@ -10,6 +10,7 @@ import mlx.core as mx
 
 from .pipeline import Pipeline
 from .network import Network
+from .backend.amp import AMPConfig, GradScaler, cast_to_dtype
 
 
 class Estimator:
@@ -26,6 +27,12 @@ class Estimator:
                  - 1: Progress bar only (epoch-level)
                  - 2: Normal output (default, logs at log_interval)
                  - 3: Verbose (logs every batch)
+        mixed_precision: Enable mixed precision training. Can be:
+                        - False/None: Disabled (default)
+                        - True: Enable with float16
+                        - "float16" or "fp16": Enable with float16
+                        - "bfloat16" or "bf16": Enable with bfloat16
+                        - AMPConfig: Custom AMP configuration
 
     Example:
         >>> estimator = Estimator(
@@ -41,6 +48,10 @@ class Estimator:
 
         >>> # Verbose training
         >>> estimator = Estimator(..., verbose=3)
+
+        >>> # Mixed precision training
+        >>> estimator = Estimator(..., mixed_precision=True)
+        >>> estimator = Estimator(..., mixed_precision="bfloat16")
     """
 
     def __init__(
@@ -50,7 +61,8 @@ class Estimator:
         epochs: int,
         traces: Optional[Iterable[object]] = None,
         log_interval: int = 100,
-        verbose: int = 2
+        verbose: int = 2,
+        mixed_precision: Union[bool, str, AMPConfig, None] = None
     ) -> None:
         self.pipeline: Pipeline = pipeline
         self.network: Network = network
@@ -60,6 +72,61 @@ class Estimator:
         self.verbose = verbose
         self.global_step: int = 0
         self.current_epoch: int = 0
+
+        # Setup mixed precision
+        self.amp_config: Optional[AMPConfig] = self._setup_amp(mixed_precision)
+        self.grad_scaler: Optional[GradScaler] = None
+        if self.amp_config and self.amp_config.enabled:
+            self.grad_scaler = GradScaler() if self.amp_config.grad_scale else None
+            self._apply_amp_to_network()
+
+    def _setup_amp(
+        self,
+        mixed_precision: Union[bool, str, AMPConfig, None]
+    ) -> Optional[AMPConfig]:
+        """Parse mixed_precision argument into AMPConfig."""
+        if mixed_precision is None or mixed_precision is False:
+            return None
+
+        if isinstance(mixed_precision, AMPConfig):
+            return mixed_precision
+
+        if mixed_precision is True or mixed_precision in ("float16", "fp16"):
+            return AMPConfig(enabled=True, dtype=mx.float16)
+
+        if mixed_precision in ("bfloat16", "bf16"):
+            return AMPConfig(enabled=True, dtype=mx.bfloat16)
+
+        raise ValueError(
+            f"Invalid mixed_precision value: {mixed_precision}. "
+            f"Expected True, False, 'float16', 'bfloat16', or AMPConfig."
+        )
+
+    def _apply_amp_to_network(self) -> None:
+        """Apply AMP settings to network ops (cast models to target dtype)."""
+        if not self.amp_config or not self.amp_config.enabled:
+            return
+
+        from .op.model_op import ModelOp
+        from .op.update_op import UpdateOp
+
+        dtype = self.amp_config.dtype
+        casted_models = set()
+
+        for op in self.network.ops:
+            if isinstance(op, (ModelOp, UpdateOp)) and hasattr(op, "model"):
+                model_id = id(op.model)
+                if model_id not in casted_models:
+                    cast_to_dtype(op.model, dtype)
+                    casted_models.add(model_id)
+                    self._log(
+                        f"AMP: Cast {op.model.__class__.__name__} to {dtype}",
+                        level=2
+                    )
+
+            # Pass grad_scaler to UpdateOp if using gradient scaling
+            if isinstance(op, UpdateOp) and self.grad_scaler is not None:
+                op.grad_scaler = self.grad_scaler
 
     def _log(self, message: str, level: int = 2) -> None:
         """Log message if verbosity level allows."""
@@ -102,6 +169,26 @@ class Estimator:
             return len(dataset)
         except (TypeError, AttributeError):
             return None
+
+    def _cast_batch_for_amp(
+        self,
+        batch: MutableMapping[str, Any]
+    ) -> MutableMapping[str, Any]:
+        """Cast batch data to AMP dtype if enabled.
+
+        Only casts float arrays; keeps integer arrays (like labels) unchanged.
+        """
+        if not self.amp_config or not self.amp_config.enabled:
+            return batch
+
+        dtype = self.amp_config.dtype
+        for key, value in batch.items():
+            if isinstance(value, mx.array):
+                # Only cast float types, leave integers alone (e.g., labels)
+                if value.dtype in (mx.float32, mx.float64):
+                    batch[key] = value.astype(dtype)
+
+        return batch
 
     def fit(self) -> MutableMapping[str, object]:
         """Train the network with periodic logging.
@@ -147,6 +234,9 @@ class Estimator:
                 step += 1
                 self.global_step += 1
                 batch_start = time.time()
+
+                # Cast batch data for mixed precision
+                batch = self._cast_batch_for_amp(batch)
                 state["batch"] = batch
 
                 # Run network forward/backward
@@ -255,6 +345,9 @@ class Estimator:
         for batch in self.pipeline.get_loader("eval"):
             eval_step += 1
             batch_start = time.time()
+
+            # Cast batch data for mixed precision
+            batch = self._cast_batch_for_amp(batch)
             eval_state["batch"] = batch
 
             try:
@@ -324,6 +417,9 @@ class Estimator:
 
         for batch in self.pipeline.get_loader("eval"):
             step += 1
+
+            # Cast batch data for mixed precision
+            batch = self._cast_batch_for_amp(batch)
             state["batch"] = batch
 
             try:

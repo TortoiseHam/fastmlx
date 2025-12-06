@@ -3,4 +3,5 @@ mlx/
 mlx-data/
 mlx-lm/
 fastmlx.egg-info/
+.claude/settings.local.json
 **/__pycache__/**

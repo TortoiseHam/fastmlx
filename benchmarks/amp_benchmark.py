@@ -50,17 +50,18 @@ class ConvNet(nn.Module):
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.fc1 = nn.Linear(128 * 4 * 4, 256)
         self.fc2 = nn.Linear(256, num_classes)
 
     def __call__(self, x):
         # x: (N, H, W, C) - MLX native format, no transpose needed
         x = nn.relu(self.conv1(x))
-        x = nn.max_pool2d(x, kernel_size=2, stride=2)
+        x = self.pool(x)
         x = nn.relu(self.conv2(x))
-        x = nn.max_pool2d(x, kernel_size=2, stride=2)
+        x = self.pool(x)
         x = nn.relu(self.conv3(x))
-        x = nn.max_pool2d(x, kernel_size=2, stride=2)
+        x = self.pool(x)
 
         x = x.reshape(x.shape[0], -1)
         x = nn.relu(self.fc1(x))
@@ -230,7 +231,8 @@ def run_benchmark(
     input_fn,
     label_fn,
     batch_sizes: list = [32, 64, 128],
-    num_iterations: int = 50
+    num_iterations: int = 50,
+    skip_input_cast: bool = False
 ) -> Dict[str, Any]:
     """Run complete benchmark comparing float32 vs float16."""
 
@@ -252,8 +254,8 @@ def run_benchmark(
             model = cast_model(model, dtype)
             optimizer = optim.Adam(learning_rate=1e-3)
 
-            # Create data in appropriate dtype
-            x = input_fn(batch_size).astype(dtype)
+            # Create data in appropriate dtype (skip cast for integer inputs like embeddings)
+            x = input_fn(batch_size) if skip_input_cast else input_fn(batch_size).astype(dtype)
             y = label_fn(batch_size)
 
             # Count parameters
@@ -346,7 +348,8 @@ def main():
         input_fn=lambda bs: mx.random.randint(0, 10000, (bs, 64)),
         label_fn=lambda bs: mx.random.randint(0, 10000, (bs, 64)),
         batch_sizes=[16, 32, 64],
-        num_iterations=30
+        num_iterations=30,
+        skip_input_cast=True  # Don't cast integer indices to float
     )
     all_results.append(results)
 

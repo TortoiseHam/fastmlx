@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, MutableMapping, List, Optional, Union, Callable
+from typing import Any, MutableMapping, List, Optional, Union, Callable, TYPE_CHECKING
 
 import mlx.nn as nn
 import mlx.core as mx
 
 from .op import Op
+
+if TYPE_CHECKING:
+    from ..backend.amp import GradScaler
 
 Array = mx.array
 
@@ -46,6 +49,9 @@ class UpdateOp(Op):
         >>> # With gradient clipping
         >>> UpdateOp(model=model, loss_name="ce", inputs="x", outputs="y_pred",
         ...          max_grad_norm=1.0)
+
+        >>> # With mixed precision (set by Estimator)
+        >>> estimator = Estimator(..., mixed_precision=True)
     """
 
     def __init__(
@@ -76,6 +82,9 @@ class UpdateOp(Op):
         self._state: List[mx.array] = []
         self._step_fn: Optional[Callable] = None
         self._initialized = False
+
+        # AMP support - set by Estimator if mixed_precision is enabled
+        self.grad_scaler: Optional["GradScaler"] = None
 
     def _initialize(self) -> None:
         """Initialize the compiled step function."""
@@ -261,6 +270,11 @@ class UpdateOp(Op):
         # Compute gradients
         loss_val, grads = self._compute_gradients(batch)
 
+        # Handle gradient scaling for mixed precision
+        if self.grad_scaler is not None:
+            # Unscale gradients before clipping and update
+            grads = self.grad_scaler.unscale(grads)
+
         # Clip gradients if configured
         if self.max_grad_norm is not None:
             grads = self._clip_gradients(grads)
@@ -270,13 +284,31 @@ class UpdateOp(Op):
             self._accumulate_gradients(grads)
 
             if self._should_update():
-                # Apply accumulated gradients
-                self.model.optimizer.update(self.model, self._accumulated_grads)
+                # Apply accumulated gradients (with grad scaler if enabled)
+                if self.grad_scaler is not None:
+                    stepped = self.grad_scaler.step(
+                        self.model.optimizer,
+                        self.model,
+                        self._accumulated_grads
+                    )
+                    if stepped:
+                        self.grad_scaler.update()
+                else:
+                    self.model.optimizer.update(self.model, self._accumulated_grads)
                 mx.eval(self.model.state, self.model.optimizer.state)
                 self._reset_accumulation()
         else:
-            # Standard update (no accumulation)
-            self.model.optimizer.update(self.model, grads)
+            # Standard update (with grad scaler if enabled)
+            if self.grad_scaler is not None:
+                stepped = self.grad_scaler.step(
+                    self.model.optimizer,
+                    self.model,
+                    grads
+                )
+                if stepped:
+                    self.grad_scaler.update()
+            else:
+                self.model.optimizer.update(self.model, grads)
             mx.eval(loss_val, self.model.state, self.model.optimizer.state)
 
         # Store loss in batch for logging

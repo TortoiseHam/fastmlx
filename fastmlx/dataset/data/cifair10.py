@@ -25,26 +25,57 @@ def _download_file_from_google_drive(file_id: str, destination: str) -> None:
     if os.path.exists(destination):
         return
 
-    base_url = "https://drive.google.com/uc?export=download"
-    initial_req = urllib.request.Request(
-        f"{base_url}&id={file_id}", headers={"User-Agent": "Mozilla/5.0"}
-    )
-    with urllib.request.urlopen(initial_req) as response:
-        if response.getheader("Content-Type", "").startswith("text/html"):
+    # Use the direct download URL with confirm=download to bypass virus scan warning
+    download_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+    }
+
+    req = urllib.request.Request(download_url, headers=headers)
+
+    with urllib.request.urlopen(req) as response:
+        content_type = response.getheader("Content-Type", "")
+
+        # If we get HTML, try to extract download link from the page
+        if "text/html" in content_type:
             html = response.read().decode("utf-8")
-            match = re.search(r"confirm=([0-9A-Za-z_]+)", html)
-            if not match:
-                raise RuntimeError("Unable to obtain download confirmation token")
-            confirm_token = match.group(1)
-            confirm_req = urllib.request.Request(
-                f"{base_url}&id={file_id}&confirm={confirm_token}",
-                headers={"User-Agent": "Mozilla/5.0"},
+
+            # Look for the download form and extract all hidden inputs
+            # Google Drive uses a form with action URL and hidden fields
+            form_match = re.search(
+                r'<form[^>]*id="download-form"[^>]*action="([^"]+)"[^>]*>(.*?)</form>',
+                html,
+                re.DOTALL,
             )
-            with urllib.request.urlopen(confirm_req) as confirm_response, open(
-                destination, "wb"
-            ) as out_file:
-                shutil.copyfileobj(confirm_response, out_file)
+            if form_match:
+                action_url = form_match.group(1).replace("&amp;", "&")
+                form_html = form_match.group(2)
+
+                # Extract all hidden input values
+                inputs = re.findall(
+                    r'<input[^>]+name="([^"]+)"[^>]+value="([^"]*)"', form_html
+                )
+                params = {name: value for name, value in inputs}
+
+                # Build the final download URL with all parameters
+                query_string = "&".join(f"{k}={v}" for k, v in params.items())
+                final_url = f"{action_url}?{query_string}"
+
+                req = urllib.request.Request(final_url, headers=headers)
+                with urllib.request.urlopen(req) as dl_response, open(
+                    destination, "wb"
+                ) as out_file:
+                    shutil.copyfileobj(dl_response, out_file)
+                return
+
+            raise RuntimeError(
+                "Unable to download from Google Drive. "
+                "Please download manually from: "
+                f"https://drive.google.com/uc?id={file_id}&export=download"
+            )
         else:
+            # Direct download worked
             with open(destination, "wb") as out_file:
                 shutil.copyfileobj(response, out_file)
 

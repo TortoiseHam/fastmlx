@@ -34,6 +34,7 @@ from .network import Network
 from .estimator import Estimator
 from .util import build
 from .display import BatchDisplay, GridDisplay
+from .backend.amp import AMPConfig
 
 # Import submodules for easy access
 from . import op
@@ -51,6 +52,8 @@ __all__ = [
     "Network",
     "Estimator",
     "build",
+    # AMP support
+    "AMPConfig",
     # Display utilities
     "BatchDisplay",
     "GridDisplay",

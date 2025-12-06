@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import tempfile
 import fastmlx as fe
 from fastmlx.architecture import ResNet9
@@ -34,7 +35,21 @@ def get_estimator(
     batch_size: int = 512,
     save_dir: str = tempfile.mkdtemp(),
     num_process: int | None = None,
+    mixed_precision: bool = True,
 ) -> fe.Estimator:
+    """Create CIFAR-10 training estimator.
+
+    Args:
+        epochs: Number of training epochs.
+        batch_size: Batch size for training.
+        save_dir: Directory to save best model.
+        num_process: Number of data loading processes.
+        mixed_precision: Enable mixed precision training (float16).
+                        Reduces memory usage and may improve speed.
+
+    Returns:
+        Configured Estimator ready for training.
+    """
     train_data, eval_data = cifair10.load_data()
     pipeline = fe.Pipeline(
         train_data=train_data,
@@ -61,11 +76,31 @@ def get_estimator(
         BestModelSaver(model=model, save_dir=save_dir, metric="accuracy"),
         LRScheduler(model=model, lr_fn=lr_schedule)
     ]
-    estimator = fe.Estimator(pipeline=pipeline, network=network, epochs=epochs, traces=traces)
+    estimator = fe.Estimator(
+        pipeline=pipeline,
+        network=network,
+        epochs=epochs,
+        traces=traces,
+        mixed_precision=mixed_precision,
+    )
     return estimator
 
 
 if __name__ == "__main__":
-    est = get_estimator()
+    parser = argparse.ArgumentParser(description="CIFAR-10 training with FastMLX")
+    parser.add_argument("--epochs", type=int, default=24, help="Number of epochs")
+    parser.add_argument("--batch-size", type=int, default=512, help="Batch size")
+    parser.add_argument("--mixed-precision", "--amp", action="store_true",
+                        help="Enable mixed precision training (float16)")
+    args = parser.parse_args()
+
+    if args.mixed_precision:
+        print("Mixed precision training enabled (float16)")
+
+    est = get_estimator(
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        mixed_precision=args.mixed_precision,
+    )
     est.fit()
     est.test()
