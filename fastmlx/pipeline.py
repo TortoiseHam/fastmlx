@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+import sys
 from typing import (
     Any,
     Dict,
@@ -18,13 +19,11 @@ from typing import (
 import mlx.core as mx
 import numpy as np
 
-# Optional MLX Data import
-try:
+# mlx-data only available on macOS (Apple Silicon)
+if sys.platform == "darwin":
     import mlx.data as dx
-    HAS_MLX_DATA = True
-except ImportError:
+else:
     dx = None  # type: ignore
-    HAS_MLX_DATA = False
 
 from .op.batch import Batch, DynamicBatch
 from .op.filtered_data import FilteredData
@@ -322,8 +321,13 @@ class Pipeline:
         else:
             data_iter = dataset
 
-        # Use MLX Data prefetching if available and requested
-        if HAS_MLX_DATA and self.num_process > 0 and not shuffle:
+        # Use MLX Data prefetching if requested and available
+        if self.num_process > 0 and not shuffle:
+            if dx is None:
+                raise PipelineError(
+                    "Parallel prefetching (num_process > 0) requires mlx-data, "
+                    "which is only available on macOS. Set num_process=0 on Linux."
+                )
             # MLX Data can parallelize sample transforms
             yield from self._mlx_data_sample_iterator(data_iter, state)
         else:
