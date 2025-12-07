@@ -6,6 +6,7 @@ import csv
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import mlx.core as mx
+import numpy as np
 
 if TYPE_CHECKING:
     from .mlx_dataset import MLXDataset
@@ -101,19 +102,31 @@ class CSVDataset:
     def __len__(self) -> int:
         return self.size
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
+        # Map MLX dtypes to numpy dtypes
+        np_dtype = np.float32
+        if self.dtype == mx.float64:
+            np_dtype = np.float64
+        elif self.dtype == mx.float16:
+            np_dtype = np.float16
+
         if self.feature_columns and self.label_column:
             # Return structured x, y format
             features = [self.data[col][idx] for col in self.feature_columns]
             label = self.data[self.label_column][idx]
             return {
-                "x": mx.array(features, dtype=self.dtype),
-                "y": mx.array([label], dtype=self.dtype if isinstance(label, float) else mx.int32)
+                "x": np.array(features, dtype=np_dtype),
+                "y": np.array([label], dtype=np_dtype if isinstance(label, float) else np.int32)
             }
         else:
             # Return all columns
             return {
-                col: mx.array([self.data[col][idx]], dtype=self.dtype)
+                col: np.array([self.data[col][idx]], dtype=np_dtype)
                 for col in self.header
             }
 

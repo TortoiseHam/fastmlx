@@ -7,6 +7,7 @@ import os
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import mlx.core as mx
+import numpy as np
 
 
 class TextDataset:
@@ -128,12 +129,17 @@ class TextDataset:
     def __len__(self) -> int:
         return len(self.texts)
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
         encoded = self._encode(self.texts[idx])
-        result: Dict[str, mx.array] = {"x": mx.array(encoded)}
+        result: Dict[str, np.ndarray] = {"x": np.array(encoded, dtype=np.int32)}
 
         if self.labels is not None:
-            result["y"] = mx.array(self.labels[idx])
+            result["y"] = np.array(self.labels[idx], dtype=np.int32)
 
         return result
 
@@ -292,16 +298,21 @@ class SequenceDataset:
     def __len__(self) -> int:
         return len(self.source_texts)
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
         source_encoded = self._encode_source(self.source_texts[idx])
         target_encoded = self._encode_target(self.target_texts[idx])
 
         return {
-            "source": mx.array(source_encoded),
-            "target": mx.array(target_encoded),
+            "source": np.array(source_encoded, dtype=np.int32),
+            "target": np.array(target_encoded, dtype=np.int32),
             # For teacher forcing: input is target[:-1], output is target[1:]
-            "target_input": mx.array(target_encoded[:-1]),
-            "target_output": mx.array(target_encoded[1:]),
+            "target_input": np.array(target_encoded[:-1], dtype=np.int32),
+            "target_output": np.array(target_encoded[1:], dtype=np.int32),
         }
 
     @property
@@ -359,21 +370,26 @@ class TokenizedDataset:
     def __len__(self) -> int:
         return len(self.input_ids)
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
-        result: Dict[str, mx.array] = {
-            "input_ids": mx.array(self.input_ids[idx]),
-            "x": mx.array(self.input_ids[idx]),  # Alias for compatibility
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
+        result: Dict[str, np.ndarray] = {
+            "input_ids": np.array(self.input_ids[idx], dtype=np.int32),
+            "x": np.array(self.input_ids[idx], dtype=np.int32),  # Alias for compatibility
         }
 
         if self.attention_mask is not None:
-            result["attention_mask"] = mx.array(self.attention_mask[idx])
+            result["attention_mask"] = np.array(self.attention_mask[idx], dtype=np.int32)
 
         if self.token_type_ids is not None:
-            result["token_type_ids"] = mx.array(self.token_type_ids[idx])
+            result["token_type_ids"] = np.array(self.token_type_ids[idx], dtype=np.int32)
 
         if self.labels is not None:
-            result["y"] = mx.array(self.labels[idx])
-            result["labels"] = mx.array(self.labels[idx])
+            result["y"] = np.array(self.labels[idx], dtype=np.int32)
+            result["labels"] = np.array(self.labels[idx], dtype=np.int32)
 
         return result
 
@@ -447,7 +463,12 @@ class LanguageModelDataset:
     def __len__(self) -> int:
         return self._num_samples
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
         start = idx * self.stride
         end = start + self.seq_length
 
@@ -460,10 +481,10 @@ class LanguageModelDataset:
         target_ids = self.token_ids[start + 1: end + 1]
 
         return {
-            "x": mx.array(input_ids),
-            "y": mx.array(target_ids),
-            "input_ids": mx.array(input_ids),
-            "labels": mx.array(target_ids),
+            "x": np.array(input_ids, dtype=np.int32),
+            "y": np.array(target_ids, dtype=np.int32),
+            "input_ids": np.array(input_ids, dtype=np.int32),
+            "labels": np.array(target_ids, dtype=np.int32),
         }
 
     @property
