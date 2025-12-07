@@ -35,7 +35,7 @@ from .minmax import Minmax
 from .model_op import ModelOp
 from .normalize import Normalize
 from .onehot import Onehot
-from .op import Op
+from .op import LossOp, Op
 from .pad_if_needed import PadIfNeeded
 
 # Geometric Augmentation Ops
@@ -51,6 +51,7 @@ from .vertical_flip import VerticalFlip
 __all__ = [
     # Base
     "Op",
+    "LossOp",
     # Batch and filtering
     "Batch",
     "DynamicBatch",

@@ -6,10 +6,10 @@ from typing import Any, MutableMapping, Sequence
 
 import mlx.core as mx
 
-from .op import Op
+from .op import LossOp
 
 
-class MeanSquaredError(Op):
+class MeanSquaredError(LossOp):
     """Compute the mean squared error loss.
 
     This loss computes the mean of squared differences between predictions and targets.

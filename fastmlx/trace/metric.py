@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, MutableMapping, Optional
+from typing import List, MutableMapping, Optional, Union
 
 import mlx.core as mx
 
@@ -17,14 +17,17 @@ class Accuracy(Trace):
         true_key: Key for ground truth labels in batch.
         pred_key: Key for predictions in batch.
         output_name: Name for the metric in state['metrics']. Defaults to 'accuracy'.
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
     def __init__(
         self,
         true_key: str = "y",
         pred_key: str = "y_pred",
-        output_name: str = "accuracy"
+        output_name: str = "accuracy",
+        mode: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        super().__init__(inputs=[true_key, pred_key], outputs=[output_name], mode=mode)
         self.true_key = true_key
         self.pred_key = pred_key
         self.output_name = output_name
@@ -54,9 +57,15 @@ class LossMonitor(Trace):
 
     Args:
         loss_key: Key for the loss value in batch.
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
-    def __init__(self, loss_key: str = "ce") -> None:
+    def __init__(
+        self,
+        loss_key: str = "ce",
+        mode: Optional[Union[str, List[str]]] = None,
+    ) -> None:
+        super().__init__(inputs=[loss_key], outputs=[loss_key], mode=mode)
         self.loss_key = loss_key
         self.total: float = 0.0
         self.count: int = 0
@@ -90,6 +99,7 @@ class Precision(Trace):
         num_classes: Number of classes. If None, inferred from predictions.
         average: Averaging method. 'micro', 'macro', or 'weighted'.
         output_name: Name for the metric in state['metrics'].
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
     def __init__(
@@ -98,8 +108,10 @@ class Precision(Trace):
         pred_key: str = "y_pred",
         num_classes: Optional[int] = None,
         average: str = "macro",
-        output_name: str = "precision"
+        output_name: str = "precision",
+        mode: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        super().__init__(inputs=[true_key, pred_key], outputs=[output_name], mode=mode)
         self.true_key = true_key
         self.pred_key = pred_key
         self.num_classes = num_classes
@@ -177,6 +189,7 @@ class Recall(Trace):
         num_classes: Number of classes. If None, inferred from predictions.
         average: Averaging method. 'micro', 'macro', or 'weighted'.
         output_name: Name for the metric in state['metrics'].
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
     def __init__(
@@ -185,8 +198,10 @@ class Recall(Trace):
         pred_key: str = "y_pred",
         num_classes: Optional[int] = None,
         average: str = "macro",
-        output_name: str = "recall"
+        output_name: str = "recall",
+        mode: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        super().__init__(inputs=[true_key, pred_key], outputs=[output_name], mode=mode)
         self.true_key = true_key
         self.pred_key = pred_key
         self.num_classes = num_classes
@@ -264,6 +279,7 @@ class F1Score(Trace):
         num_classes: Number of classes. If None, inferred from predictions.
         average: Averaging method. 'micro', 'macro', or 'weighted'.
         output_name: Name for the metric in state['metrics'].
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
     def __init__(
@@ -272,8 +288,10 @@ class F1Score(Trace):
         pred_key: str = "y_pred",
         num_classes: Optional[int] = None,
         average: str = "macro",
-        output_name: str = "f1_score"
+        output_name: str = "f1_score",
+        mode: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        super().__init__(inputs=[true_key, pred_key], outputs=[output_name], mode=mode)
         self.true_key = true_key
         self.pred_key = pred_key
         self.num_classes = num_classes
@@ -362,6 +380,7 @@ class ConfusionMatrix(Trace):
         pred_key: Key for predictions in batch.
         num_classes: Number of classes. Required.
         output_name: Name for the metric in state['metrics'].
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
     def __init__(
@@ -369,8 +388,10 @@ class ConfusionMatrix(Trace):
         true_key: str = "y",
         pred_key: str = "y_pred",
         num_classes: int = 10,
-        output_name: str = "confusion_matrix"
+        output_name: str = "confusion_matrix",
+        mode: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        super().__init__(inputs=[true_key, pred_key], outputs=[output_name], mode=mode)
         self.true_key = true_key
         self.pred_key = pred_key
         self.num_classes = num_classes
@@ -411,6 +432,7 @@ class MCC(Trace):
         pred_key: Key for predictions in batch.
         num_classes: Number of classes. If None, inferred from predictions.
         output_name: Name for the metric in state['metrics'].
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
     def __init__(
@@ -418,8 +440,10 @@ class MCC(Trace):
         true_key: str = "y",
         pred_key: str = "y_pred",
         num_classes: Optional[int] = None,
-        output_name: str = "mcc"
+        output_name: str = "mcc",
+        mode: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        super().__init__(inputs=[true_key, pred_key], outputs=[output_name], mode=mode)
         self.true_key = true_key
         self.pred_key = pred_key
         self.num_classes = num_classes
@@ -494,6 +518,7 @@ class Dice(Trace):
         threshold: Threshold for binary prediction (if predictions are probabilities).
         smooth: Smoothing factor to avoid division by zero.
         output_name: Name for the metric in state['metrics'].
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
     def __init__(
@@ -502,8 +527,10 @@ class Dice(Trace):
         pred_key: str = "y_pred",
         threshold: float = 0.5,
         smooth: float = 1.0,
-        output_name: str = "dice"
+        output_name: str = "dice",
+        mode: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        super().__init__(inputs=[true_key, pred_key], outputs=[output_name], mode=mode)
         self.true_key = true_key
         self.pred_key = pred_key
         self.threshold = threshold

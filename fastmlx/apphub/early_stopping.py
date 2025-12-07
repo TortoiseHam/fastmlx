@@ -86,8 +86,7 @@ def get_estimator(
             monitor="accuracy",
             patience=patience,
             min_delta=min_delta,
-            mode="max",  # Higher accuracy is better
-            verbose=True
+            compare_mode="max",  # Higher accuracy is better
         ),
 
         # Reduce learning rate when accuracy plateaus
@@ -97,9 +96,8 @@ def get_estimator(
             factor=lr_factor,
             patience=lr_patience,
             min_delta=min_delta,
-            mode="max",
+            compare_mode="max",
             min_lr=1e-6,
-            verbose=True
         ),
 
         # Stop if NaN loss is detected
@@ -168,8 +166,7 @@ def get_estimator_loss_based(
             monitor="ce",
             patience=patience,
             min_delta=0.0001,
-            mode="min",  # Lower loss is better
-            verbose=True
+            compare_mode="min",  # Lower loss is better
         ),
 
         ReduceLROnPlateau(
@@ -177,8 +174,7 @@ def get_estimator_loss_based(
             monitor="ce",
             factor=0.5,
             patience=5,
-            mode="min",
-            verbose=True
+            compare_mode="min",
         ),
 
         TerminateOnNaN(monitor="ce"),

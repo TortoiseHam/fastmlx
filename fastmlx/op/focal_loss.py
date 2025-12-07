@@ -6,10 +6,10 @@ from typing import Any, MutableMapping, Optional, Sequence
 
 import mlx.core as mx
 
-from .op import Op
+from .op import LossOp
 
 
-class FocalLoss(Op):
+class FocalLoss(LossOp):
     """Compute the focal loss for classification with class imbalance.
 
     Focal loss down-weights well-classified examples and focuses on hard examples.
