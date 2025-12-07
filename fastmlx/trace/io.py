@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import os
 from datetime import datetime
-from typing import Any, Dict, List, MutableMapping, Optional
+from typing import Any, Dict, List, MutableMapping, Optional, Union
 
 import mlx.core as mx
 
@@ -20,6 +20,7 @@ class BestModelSaver(Trace):
         save_dir: Directory to save the model.
         metric: Metric name to monitor (from state['metrics']).
         save_best_mode: One of 'max' or 'min'. Save when metric is highest or lowest.
+        mode: Mode(s) in which to run. Defaults to "eval".
     """
 
     def __init__(
@@ -27,8 +28,10 @@ class BestModelSaver(Trace):
         model,
         save_dir: str,
         metric: str = "accuracy",
-        save_best_mode: str = "max"
+        save_best_mode: str = "max",
+        mode: Optional[Union[str, List[str]]] = "eval",
     ) -> None:
+        super().__init__(inputs=[metric], mode=mode)
         self.model = model
         self.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
@@ -57,6 +60,7 @@ class ModelSaver(Trace):
         save_dir: Directory to save the model.
         frequency: How often to save, in epochs. If 0, only save at the end.
         save_optimizer: Whether to save optimizer state as well.
+        mode: Mode(s) in which to run. Defaults to "train".
     """
 
     def __init__(
@@ -64,8 +68,10 @@ class ModelSaver(Trace):
         model,
         save_dir: str,
         frequency: int = 1,
-        save_optimizer: bool = False
+        save_optimizer: bool = False,
+        mode: Optional[Union[str, List[str]]] = "train",
     ) -> None:
+        super().__init__(mode=mode)
         self.model = model
         self.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
@@ -107,14 +113,17 @@ class CSVLogger(Trace):
         filename: Path to the CSV file.
         separator: Delimiter for the CSV file.
         append: If True, append to existing file. If False, overwrite.
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
     def __init__(
         self,
         filename: str,
         separator: str = ",",
-        append: bool = False
+        append: bool = False,
+        mode: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        super().__init__(mode=mode)
         self.filename = filename
         self.separator = separator
         self.append = append
@@ -159,9 +168,15 @@ class ProgressLogger(Trace):
 
     Args:
         log_frequency: How often to log (in batches). If 0, log only at epoch end.
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
-    def __init__(self, log_frequency: int = 0) -> None:
+    def __init__(
+        self,
+        log_frequency: int = 0,
+        mode: Optional[Union[str, List[str]]] = None,
+    ) -> None:
+        super().__init__(mode=mode)
         self.log_frequency = log_frequency
         self.batch_count: int = 0
 
@@ -184,9 +199,16 @@ class Timer(Trace):
     """Track and report training time.
 
     Records time for each epoch and total training time.
+
+    Args:
+        mode: Mode(s) in which to run. Defaults to None (all modes).
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        mode: Optional[Union[str, List[str]]] = None,
+    ) -> None:
+        super().__init__(outputs=["epoch_time"], mode=mode)
         self.start_time: Optional[datetime] = None
         self.epoch_start: Optional[datetime] = None
 

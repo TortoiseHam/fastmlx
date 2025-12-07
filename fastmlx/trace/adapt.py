@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Callable, MutableMapping, Optional
+from typing import Callable, List, MutableMapping, Optional, Union
 
 from .base import Trace
 
@@ -14,9 +14,16 @@ class LRScheduler(Trace):
     Args:
         model: The model whose optimizer's learning rate will be adjusted.
         lr_fn: A function that takes the current step and returns the learning rate.
+        mode: Mode(s) in which to run. Defaults to "train".
     """
 
-    def __init__(self, model, lr_fn: Callable[[int], float]) -> None:
+    def __init__(
+        self,
+        model,
+        lr_fn: Callable[[int], float],
+        mode: Optional[Union[str, List[str]]] = "train",
+    ) -> None:
+        super().__init__(mode=mode)
         self.model = model
         self.lr_fn = lr_fn
         self.step: int = 0
@@ -37,7 +44,7 @@ class EarlyStopping(Trace):
         monitor: Metric name to monitor (from state['metrics']).
         min_delta: Minimum change to qualify as an improvement.
         patience: Number of epochs with no improvement after which training will be stopped.
-        mode: One of 'min' or 'max'. In 'min' mode, training stops when the
+        compare_mode: One of 'min' or 'max'. In 'min' mode, training stops when the
               metric stops decreasing; in 'max' mode it stops when the metric
               stops increasing.
         baseline: Baseline value for the monitored metric. Training will stop if
@@ -45,16 +52,17 @@ class EarlyStopping(Trace):
         restore_best_weights: Whether to restore model weights from the epoch with
                               the best value of the monitored metric.
         model: The model to save/restore weights for. Required if restore_best_weights=True.
+        mode: Mode(s) in which to run. Defaults to "eval".
 
     Example:
         >>> # Basic early stopping
-        >>> EarlyStopping(monitor="accuracy", patience=5, mode="max")
+        >>> EarlyStopping(monitor="accuracy", patience=5, compare_mode="max")
 
         >>> # With weight restoration
         >>> EarlyStopping(
         ...     monitor="eval_loss",
         ...     patience=10,
-        ...     mode="min",
+        ...     compare_mode="min",
         ...     restore_best_weights=True,
         ...     model=model
         ... )
@@ -65,15 +73,17 @@ class EarlyStopping(Trace):
         monitor: str = "loss",
         min_delta: float = 0.0,
         patience: int = 5,
-        mode: str = "min",
+        compare_mode: str = "min",
         baseline: Optional[float] = None,
         restore_best_weights: bool = False,
         model: Optional[object] = None,
+        mode: Optional[Union[str, List[str]]] = "eval",
     ) -> None:
+        super().__init__(inputs=[monitor], mode=mode)
         self.monitor = monitor
         self.min_delta = min_delta
         self.patience = patience
-        self.mode = mode
+        self.compare_mode = compare_mode
         self.baseline = baseline
         self.restore_best_weights = restore_best_weights
         self.model = model
@@ -89,7 +99,7 @@ class EarlyStopping(Trace):
         self.best: Optional[float] = None
         self.best_weights: Optional[dict] = None
 
-        if mode == "min":
+        if compare_mode == "min":
             self.monitor_op = lambda a, b: a < b - min_delta
         else:
             self.monitor_op = lambda a, b: a > b + min_delta
@@ -150,12 +160,13 @@ class ReduceLROnPlateau(Trace):
         monitor: Metric name to monitor (from state['metrics']).
         factor: Factor by which the learning rate will be reduced. new_lr = lr * factor.
         patience: Number of epochs with no improvement after which LR will be reduced.
-        mode: One of 'min' or 'max'. In 'min' mode, LR is reduced when the
+        compare_mode: One of 'min' or 'max'. In 'min' mode, LR is reduced when the
               metric stops decreasing; in 'max' mode when it stops increasing.
         min_delta: Threshold for measuring the new optimum.
         cooldown: Number of epochs to wait before resuming normal operation after
                   LR has been reduced.
         min_lr: Lower bound on the learning rate.
+        mode: Mode(s) in which to run. Defaults to "eval".
     """
 
     def __init__(
@@ -164,16 +175,18 @@ class ReduceLROnPlateau(Trace):
         monitor: str = "loss",
         factor: float = 0.1,
         patience: int = 10,
-        mode: str = "min",
+        compare_mode: str = "min",
         min_delta: float = 1e-4,
         cooldown: int = 0,
-        min_lr: float = 0.0
+        min_lr: float = 0.0,
+        mode: Optional[Union[str, List[str]]] = "eval",
     ) -> None:
+        super().__init__(inputs=[monitor], mode=mode)
         self.model = model
         self.monitor = monitor
         self.factor = factor
         self.patience = patience
-        self.mode = mode
+        self.compare_mode = compare_mode
         self.min_delta = min_delta
         self.cooldown = cooldown
         self.min_lr = min_lr
@@ -182,7 +195,7 @@ class ReduceLROnPlateau(Trace):
         self.cooldown_counter: int = 0
         self.best: Optional[float] = None
 
-        if mode == "min":
+        if compare_mode == "min":
             self.monitor_op = lambda a, b: a < b - min_delta
         else:
             self.monitor_op = lambda a, b: a > b + min_delta
@@ -225,9 +238,15 @@ class TerminateOnNaN(Trace):
 
     Args:
         monitor: Key to monitor for NaN values. Defaults to 'loss'.
+        mode: Mode(s) in which to run. Defaults to "train".
     """
 
-    def __init__(self, monitor: str = "loss") -> None:
+    def __init__(
+        self,
+        monitor: str = "loss",
+        mode: Optional[Union[str, List[str]]] = "train",
+    ) -> None:
+        super().__init__(inputs=[monitor], mode=mode)
         self.monitor = monitor
 
     def on_batch_end(self, batch: MutableMapping[str, object], state: MutableMapping[str, object]) -> None:
@@ -254,6 +273,7 @@ class WarmupScheduler(Trace):
         warmup_steps: Number of steps over which to warm up.
         target_lr: The target learning rate after warmup.
         start_lr: The starting learning rate. Defaults to 0.
+        mode: Mode(s) in which to run. Defaults to "train".
     """
 
     def __init__(
@@ -261,8 +281,10 @@ class WarmupScheduler(Trace):
         model,
         warmup_steps: int,
         target_lr: float,
-        start_lr: float = 0.0
+        start_lr: float = 0.0,
+        mode: Optional[Union[str, List[str]]] = "train",
     ) -> None:
+        super().__init__(mode=mode)
         self.model = model
         self.warmup_steps = warmup_steps
         self.target_lr = target_lr
