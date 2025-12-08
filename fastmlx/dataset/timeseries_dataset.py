@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import mlx.core as mx
+import numpy as np
 
 
 class TimeSeriesDataset:
@@ -164,7 +165,12 @@ class TimeSeriesDataset:
     def __len__(self) -> int:
         return self._num_samples
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
         start = idx * self.stride
         input_end = start + self.input_length
         output_end = input_end + self.output_length
@@ -176,16 +182,16 @@ class TimeSeriesDataset:
         output_seq = self.data[input_end:output_end]
 
         # Convert to arrays
-        x = mx.array(input_seq)
+        x = np.array(input_seq, dtype=np.float32)
 
         if self.target_column is not None:
-            y = mx.array([[row[self.target_column]] for row in output_seq])
+            y = np.array([[row[self.target_column]] for row in output_seq], dtype=np.float32)
         else:
-            y = mx.array(output_seq)
+            y = np.array(output_seq, dtype=np.float32)
 
         # Squeeze if single output
         if self.output_length == 1:
-            y = y.squeeze(0)
+            y = np.squeeze(y, axis=0)
 
         return {"x": x, "y": y}
 
@@ -237,18 +243,23 @@ class WindowedDataset:
     def __len__(self) -> int:
         return len(self.windows)
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
         window = self.windows[idx]
 
         if self.flatten:
-            x = mx.array(window).flatten()
+            x = np.array(window, dtype=np.float32).flatten()
         else:
-            x = mx.array(window)
+            x = np.array(window, dtype=np.float32)
 
-        result = {"x": x}
+        result: Dict[str, np.ndarray] = {"x": x}
 
         if self.window_labels:
-            result["y"] = mx.array(self.window_labels[idx])
+            result["y"] = np.array(self.window_labels[idx], dtype=np.int32)
 
         return result
 
@@ -454,17 +465,22 @@ class OHLCVDataset:
     def __len__(self) -> int:
         return self._num_samples
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
         input_end = idx + self.input_length
 
         # Input features
-        x = mx.array(self.feature_matrix[idx:input_end])
+        x = np.array(self.feature_matrix[idx:input_end], dtype=np.float32)
 
         # Target
         target = self.targets[input_end - 1]
         if isinstance(target, list):
-            y = mx.array(target)
+            y = np.array(target, dtype=np.float32)
         else:
-            y = mx.array([target])
+            y = np.array([target], dtype=np.float32)
 
         return {"x": x, "y": y}

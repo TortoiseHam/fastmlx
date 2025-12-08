@@ -1,31 +1,48 @@
-"""A simple in-memory dataset backed by MLX arrays."""
+"""A simple in-memory dataset backed by numpy arrays.
+
+Data is stored as numpy arrays to avoid Metal buffer allocation limits when
+iterating through large datasets. Conversion to MLX arrays happens at batch
+time in the Pipeline.
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Mapping
+from typing import Any, Dict, Mapping, Union
 
-if TYPE_CHECKING:
-    import mlx.core as mx
+import numpy as np
 
-import mlx.core as mx
+# Accept both numpy and MLX arrays as input
+ArrayLike = Union[np.ndarray, Any]  # Any covers mx.array without import
 
 
 class MLXDataset:
-    """Dataset storing MLX arrays in memory.
+    """Dataset storing arrays in memory as numpy.
+
+    Data is stored internally as numpy arrays to avoid Metal buffer allocation
+    limits. Each ``__getitem__`` call returns numpy arrays, and conversion to
+    MLX arrays happens at batch time in the Pipeline's collate step.
 
     Args:
-        data: Dictionary mapping keys to arrays. All arrays must have the same
-            length (first dimension).
+        data: Dictionary mapping keys to arrays (numpy or MLX). All arrays
+            must have the same length (first dimension).
 
     Raises:
         ValueError: If data is empty or arrays have different lengths.
     """
 
-    def __init__(self, data: Mapping[str, mx.array]) -> None:
+    def __init__(self, data: Mapping[str, ArrayLike]) -> None:
         if not data:
             raise ValueError("Cannot create MLXDataset with empty data")
 
-        self.data: Mapping[str, mx.array] = {k: mx.array(v) for k, v in data.items()}
+        # Convert all arrays to numpy to avoid Metal allocation explosion
+        # when iterating through the dataset
+        self.data: Dict[str, np.ndarray] = {}
+        for k, v in data.items():
+            if isinstance(v, np.ndarray):
+                self.data[k] = v
+            else:
+                # Handles mx.array and other array-like objects
+                self.data[k] = np.array(v)
 
         # Validate all arrays have the same size
         sizes = [len(v) for v in self.data.values()]
@@ -38,6 +55,11 @@ class MLXDataset:
     def __len__(self) -> int:
         return self.size
 
-    def __getitem__(self, idx: int) -> Dict[str, mx.array]:
+    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+        """Get a single sample by index.
+
+        Returns numpy arrays to avoid Metal buffer allocation limits.
+        Conversion to MLX arrays happens at batch time.
+        """
         return {k: v[idx] for k, v in self.data.items()}
 
