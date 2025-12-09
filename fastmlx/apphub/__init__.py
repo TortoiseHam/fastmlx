@@ -1,143 +1,105 @@
 """Example applications built with fastmlx.
 
+Categories:
+
 Image Classification:
-    - mnist: MNIST digit classification with LeNet
-    - cifar10: CIFAR-10 classification with ResNet9
-    - fashion_mnist: Fashion-MNIST classification with LeNet
-    - vit_cifar10: CIFAR-10 with Vision Transformer
-    - wideresnet_cifar10: CIFAR-10 with WideResNet variants
+    - image_classification.mnist: MNIST digit classification with LeNet
+    - image_classification.cifar10: CIFAR-10 classification with ResNet9
+    - image_classification.fashion_mnist: Fashion-MNIST classification with LeNet
+    - image_classification.vit_cifar10: CIFAR-10 with Vision Transformer
+    - image_classification.wideresnet_cifar10: CIFAR-10 with WideResNet variants
 
-Image Segmentation:
-    - unet_segmentation: UNet on synthetic circular mask data
+Semantic Segmentation:
+    - semantic_segmentation.unet_segmentation: UNet on synthetic circular mask data
 
-Training Techniques:
-    - super_convergence: 1cycle learning rate policy for fast training
-    - fgsm_adversarial: FGSM adversarial training for robustness
-    - mixup_training: MixUp data augmentation
-    - cutmix_training: CutMix data augmentation
-    - early_stopping: Adaptive training with early stopping
-    - lr_finder: Learning rate range test
-    - multitask_learning: Uncertainty-weighted multi-task learning
-    - knowledge_distillation: Teacher-student model training
-    - gradient_accumulation: Training with large effective batch sizes
-    - transfer_learning: Fine-tuning pretrained models
-    - curriculum_learning: Difficulty-based curriculum training
-    - focal_loss_imbalanced: Focal loss for class imbalance
-    - label_smoothing: Label smoothing regularization
-    - gradient_clipping: Gradient clipping for stable training
-    - pseudo_labeling: Semi-supervised learning with pseudo labels
-    - stochastic_weight_averaging: SWA for better generalization
-    - progressive_resizing: Multi-scale training with increasing resolution
+Image Generation:
+    - image_generation.autoencoder_mnist: Autoencoder and VAE on MNIST
+    - image_generation.dcgan_mnist: Deep Convolutional GAN
+    - image_generation.conditional_gan: Class-conditional GAN
 
-Metric Learning:
-    - siamese_mnist: Siamese network for one-shot learning
-    - triplet_loss: Triplet loss for embedding learning
+One-Shot Learning:
+    - one_shot_learning.siamese_mnist: Siamese network for one-shot learning
+    - one_shot_learning.triplet_loss: Triplet loss for embedding learning
 
-Self-Supervised Learning:
-    - simclr_cifar10: SimCLR contrastive learning
+Contrastive Learning:
+    - contrastive_learning.simclr_cifar10: SimCLR contrastive learning
 
-Generative Models:
-    - autoencoder_mnist: Autoencoder and VAE on MNIST
-    - dcgan_mnist: Deep Convolutional GAN
-    - conditional_gan: Class-conditional GAN
+NLP:
+    - NLP.gpt_language_model: Character-level GPT on Shakespeare
 
-Language Modeling:
-    - gpt_language_model: Character-level GPT on Shakespeare
-
-Tabular Data:
-    - tabular_dnn: DNN for structured data (classification/regression)
+Tabular:
+    - tabular.tabular_dnn: DNN for structured data (classification/regression)
 
 Time Series:
-    - time_series_forecasting: Neural network forecasting with LSTM/Transformer/MLP
-
-Ensemble Learning:
-    - model_ensemble: Combining multiple models for improved predictions
+    - time_series.time_series_forecasting: Neural network forecasting with LSTM/Transformer/MLP
 
 Anomaly Detection:
-    - anomaly_detection: Autoencoder-based anomaly detection
+    - anomaly_detection.anomaly_detection: Autoencoder-based anomaly detection
+
+Adversarial Training:
+    - adversarial_training.fgsm_adversarial: FGSM adversarial training for robustness
+
+Curriculum Learning:
+    - curriculum_learning.curriculum_learning: Difficulty-based curriculum training
+
+Multi-Task Learning:
+    - multi_task_learning.multitask_learning: Uncertainty-weighted multi-task learning
+    - multi_task_learning.knowledge_distillation: Teacher-student model training
+
+Learning Rate Control:
+    - lr_controller.super_convergence: 1cycle learning rate policy for fast training
+    - lr_controller.lr_finder: Learning rate range test
+
+Regularization & Training Techniques:
+    - regularization.mixup_training: MixUp data augmentation
+    - regularization.cutmix_training: CutMix data augmentation
+    - regularization.early_stopping: Adaptive training with early stopping
+    - regularization.focal_loss_imbalanced: Focal loss for class imbalance
+    - regularization.label_smoothing: Label smoothing regularization
+    - regularization.gradient_clipping: Gradient clipping for stable training
+    - regularization.gradient_accumulation: Training with large effective batch sizes
+    - regularization.pseudo_labeling: Semi-supervised learning with pseudo labels
+    - regularization.stochastic_weight_averaging: SWA for better generalization
+    - regularization.progressive_resizing: Multi-scale training with increasing resolution
+
+Ensemble Learning:
+    - ensemble.model_ensemble: Combining multiple models for improved predictions
+    - ensemble.transfer_learning: Fine-tuning pretrained models
 """
 
 from . import (
+    NLP,
+    adversarial_training,
     anomaly_detection,
-    autoencoder_mnist,
-    cifar10,
-    conditional_gan,
+    contrastive_learning,
     curriculum_learning,
-    cutmix_training,
-    dcgan_mnist,
-    early_stopping,
-    fashion_mnist,
-    fgsm_adversarial,
-    focal_loss_imbalanced,
-    gpt_language_model,
-    gradient_accumulation,
-    gradient_clipping,
-    knowledge_distillation,
-    label_smoothing,
-    lr_finder,
-    mixup_training,
-    mnist,
-    model_ensemble,
-    multitask_learning,
-    progressive_resizing,
-    pseudo_labeling,
-    siamese_mnist,
-    simclr_cifar10,
-    stochastic_weight_averaging,
-    super_convergence,
-    tabular_dnn,
-    time_series_forecasting,
-    transfer_learning,
-    triplet_loss,
-    unet_segmentation,
-    vit_cifar10,
-    wideresnet_cifar10,
+    ensemble,
+    image_classification,
+    image_generation,
+    lr_controller,
+    multi_task_learning,
+    one_shot_learning,
+    regularization,
+    semantic_segmentation,
+    tabular,
+    time_series,
 )
 
 __all__ = [
-    # Image Classification
-    "mnist",
-    "cifar10",
-    "fashion_mnist",
-    "vit_cifar10",
-    "wideresnet_cifar10",
-    # Image Segmentation
-    "unet_segmentation",
-    # Training Techniques
-    "super_convergence",
-    "fgsm_adversarial",
-    "mixup_training",
-    "cutmix_training",
-    "early_stopping",
-    "lr_finder",
-    "multitask_learning",
-    "knowledge_distillation",
-    "gradient_accumulation",
-    "transfer_learning",
-    "curriculum_learning",
-    "focal_loss_imbalanced",
-    "label_smoothing",
-    "gradient_clipping",
-    "pseudo_labeling",
-    "stochastic_weight_averaging",
-    "progressive_resizing",
-    # Metric Learning
-    "siamese_mnist",
-    "triplet_loss",
-    # Self-Supervised Learning
-    "simclr_cifar10",
-    # Generative Models
-    "autoencoder_mnist",
-    "dcgan_mnist",
-    "conditional_gan",
-    # Language Modeling
-    "gpt_language_model",
-    # Tabular Data
-    "tabular_dnn",
-    # Time Series
-    "time_series_forecasting",
-    # Ensemble Learning
-    "model_ensemble",
-    # Anomaly Detection
+    # Categories
+    "image_classification",
+    "semantic_segmentation",
+    "image_generation",
+    "one_shot_learning",
+    "contrastive_learning",
+    "NLP",
+    "tabular",
+    "time_series",
     "anomaly_detection",
+    "adversarial_training",
+    "curriculum_learning",
+    "multi_task_learning",
+    "lr_controller",
+    "regularization",
+    "ensemble",
 ]
