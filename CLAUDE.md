@@ -125,15 +125,18 @@ Priority items from FastEstimator (updated December 2024):
 - [x] AUC metric
 - [x] XAI traces (GradCAM, Saliency, IntegratedGradients)
 - [x] ImageSaver and ImageViewer traces
+- [x] BLEU Score metric (NLP evaluation)
+- [x] Mean Average Precision (mAP) for object detection
+- [x] CalibrationError metric (ECE/MCE)
+- [x] SiameseDirDataset (one-shot/few-shot learning)
+- [x] NumpyDataset, PickleDataset, InMemoryDataset
+- [x] RestoreWizard trace (robust checkpointing)
 
 ### Remaining High Priority:
-- [ ] More metrics (BLEU Score, Mean Average Precision, CalibrationError)
-- [ ] SiameseDirDataset
-- [ ] RestoreWizard trace
 - [ ] Traceability/TestReport traces
+- [ ] More NLP metrics (ROUGE, METEOR, etc.)
 
 ### Medium Priority:
-- [ ] More dataset types (NumpyDataset, PickleDataset)
 - [ ] Advanced augmentation (CLAHE, weather effects, etc.)
 - [ ] Advanced geometric transforms (Affine, GridDistortion, OpticalDistortion)
 

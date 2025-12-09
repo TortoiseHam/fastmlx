@@ -18,6 +18,16 @@ from .nlp_dataset import (
     TokenizedDataset,
 )
 
+# Numpy/Pickle datasets
+from .numpy_dataset import (
+    InMemoryDataset,
+    NumpyDataset,
+    PickleDataset,
+)
+
+# Siamese datasets
+from .siamese_dataset import SiameseDirDataset
+
 # Time series datasets
 from .timeseries_dataset import (
     OHLCVDataset,
@@ -35,6 +45,12 @@ __all__ = [
     "BatchDataset",
     "CombinedDataset",
     "InterleaveDataset",
+    # In-memory datasets
+    "NumpyDataset",
+    "PickleDataset",
+    "InMemoryDataset",
+    # Siamese datasets
+    "SiameseDirDataset",
     # NLP datasets
     "TextDataset",
     "SequenceDataset",

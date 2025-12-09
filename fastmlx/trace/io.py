@@ -476,3 +476,161 @@ class ImageViewer(Trace):
         # Display at epoch end if not done via frequency
         if self.frequency == 0:
             self._display_images(state)
+
+
+class RestoreWizard(Trace):
+    """Automatically save and restore training checkpoints.
+
+    Implements a robust checkpoint system that maintains two backup directories
+    and atomically switches between them. This ensures that even if a save
+    operation is interrupted, a valid checkpoint always exists.
+
+    Args:
+        model: The model to save/restore.
+        save_dir: Directory to store checkpoints.
+        frequency: How often to save (in epochs). Default 1.
+        restore_on_start: Whether to restore from checkpoint on start. Default True.
+        mode: Mode(s) in which to run. Defaults to "train".
+
+    Example:
+        >>> wizard = RestoreWizard(model=model, save_dir="./checkpoints")
+        >>> estimator = Estimator(..., traces=[wizard])
+    """
+
+    def __init__(
+        self,
+        model,
+        save_dir: str,
+        frequency: int = 1,
+        restore_on_start: bool = True,
+        mode: Optional[Union[str, List[str]]] = "train",
+    ) -> None:
+        super().__init__(mode=mode)
+        self.model = model
+        self.save_dir = save_dir
+        self.frequency = frequency
+        self.restore_on_start = restore_on_start
+
+        # Create directories
+        os.makedirs(save_dir, exist_ok=True)
+        self.dir_a = os.path.join(save_dir, "checkpoint_a")
+        self.dir_b = os.path.join(save_dir, "checkpoint_b")
+        self.key_file = os.path.join(save_dir, "active_checkpoint")
+
+        os.makedirs(self.dir_a, exist_ok=True)
+        os.makedirs(self.dir_b, exist_ok=True)
+
+        self._current_dir: Optional[str] = None
+
+    def _read_key(self) -> Optional[str]:
+        """Read the active checkpoint directory from key file."""
+        if os.path.exists(self.key_file):
+            with open(self.key_file, 'r') as f:
+                key = f.read().strip()
+            if key in ('a', 'b'):
+                return self.dir_a if key == 'a' else self.dir_b
+        return None
+
+    def _write_key(self, directory: str) -> None:
+        """Atomically write the active checkpoint key."""
+        key = 'a' if directory == self.dir_a else 'b'
+
+        # Write to temp file then rename (atomic on POSIX)
+        temp_file = self.key_file + '.tmp'
+        with open(temp_file, 'w') as f:
+            f.write(key)
+
+        os.replace(temp_file, self.key_file)
+
+    def _get_alternate_dir(self, current: str) -> str:
+        """Get the alternate checkpoint directory."""
+        return self.dir_b if current == self.dir_a else self.dir_a
+
+    def _save_checkpoint(self, state: MutableMapping[str, object]) -> None:
+        """Save checkpoint to the non-active directory."""
+        # Determine which directory to write to
+        active = self._read_key()
+        if active:
+            target_dir = self._get_alternate_dir(active)
+        else:
+            target_dir = self.dir_a
+
+        # Save model weights
+        model_path = os.path.join(target_dir, "model.npz")
+        self.model.save_weights(model_path)
+
+        # Save training state
+        epoch = state.get('epoch', 0)
+        state_path = os.path.join(target_dir, "state.npz")
+        np.savez(state_path, epoch=epoch)
+
+        # Save optimizer state if available
+        if hasattr(self.model, 'optimizer') and self.model.optimizer is not None:
+            opt_state = self.model.optimizer.state
+            if opt_state:
+                opt_path = os.path.join(target_dir, "optimizer.npz")
+                # Flatten optimizer state for saving
+                opt_dict = {}
+                for i, s in enumerate(opt_state):
+                    if isinstance(s, dict):
+                        for k, v in s.items():
+                            if isinstance(v, mx.array):
+                                opt_dict[f"state_{i}_{k}"] = np.array(v)
+                    elif isinstance(s, mx.array):
+                        opt_dict[f"state_{i}"] = np.array(s)
+                if opt_dict:
+                    np.savez(opt_path, **opt_dict)
+
+        # Atomically switch to new checkpoint
+        self._write_key(target_dir)
+        self._current_dir = target_dir
+
+        print(f"FastMLX-RestoreWizard: Saved checkpoint to {target_dir}")
+
+    def _restore_checkpoint(self) -> Optional[int]:
+        """Restore from the active checkpoint. Returns restored epoch or None."""
+        active = self._read_key()
+        if not active:
+            return None
+
+        model_path = os.path.join(active, "model.npz")
+        if not os.path.exists(model_path):
+            return None
+
+        # Restore model weights
+        self.model.load_weights(model_path)
+
+        # Restore training state
+        state_path = os.path.join(active, "state.npz")
+        epoch = 0
+        if os.path.exists(state_path):
+            state_data = np.load(state_path)
+            epoch = int(state_data['epoch'])
+
+        self._current_dir = active
+        print(f"FastMLX-RestoreWizard: Restored checkpoint from {active} (epoch {epoch})")
+
+        return epoch
+
+    def should_restore(self) -> bool:
+        """Check if a valid checkpoint exists to restore."""
+        active = self._read_key()
+        if active:
+            model_path = os.path.join(active, "model.npz")
+            return os.path.exists(model_path)
+        return False
+
+    def on_start(self, state: MutableMapping[str, object]) -> None:
+        if self.restore_on_start and self.should_restore():
+            epoch = self._restore_checkpoint()
+            if epoch is not None:
+                state['restored_epoch'] = epoch
+
+    def on_epoch_end(self, state: MutableMapping[str, object]) -> None:
+        epoch = state.get('epoch', 0)
+        if self.frequency > 0 and (epoch + 1) % self.frequency == 0:
+            self._save_checkpoint(state)
+
+    def on_finish(self, state: MutableMapping[str, object]) -> None:
+        # Save final checkpoint
+        self._save_checkpoint(state)
