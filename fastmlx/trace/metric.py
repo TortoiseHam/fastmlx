@@ -562,3 +562,143 @@ class Dice(Trace):
     def on_epoch_end(self, state: MutableMapping[str, object]) -> None:
         dice = (2.0 * self.intersection + self.smooth) / (self.union + self.smooth)
         state['metrics'][self.output_name] = dice
+
+
+class AUC(Trace):
+    """Compute Area Under the ROC Curve (AUC) for binary or multi-class classification.
+
+    For binary classification, computes AUC directly.
+    For multi-class, uses one-vs-rest (OvR) strategy with specified averaging.
+
+    Args:
+        true_key: Key for ground truth labels in batch.
+        pred_key: Key for predictions (probabilities) in batch.
+        average: Averaging method for multi-class: 'macro', 'weighted', or None (per-class).
+        output_name: Name for the metric in state['metrics'].
+        mode: Mode(s) in which to run. Defaults to None (all modes).
+
+    Example:
+        >>> AUC(true_key="y", pred_key="y_pred", output_name="auc")
+    """
+
+    def __init__(
+        self,
+        true_key: str = "y",
+        pred_key: str = "y_pred",
+        average: Optional[str] = "macro",
+        output_name: str = "auc",
+        mode: Optional[Union[str, List[str]]] = None,
+    ) -> None:
+        super().__init__(inputs=[true_key, pred_key], outputs=[output_name], mode=mode)
+        self.true_key = true_key
+        self.pred_key = pred_key
+        self.average = average
+        self.output_name = output_name
+        self.y_true_list: List = []
+        self.y_pred_list: List = []
+
+    def on_epoch_begin(self, state: MutableMapping[str, object]) -> None:
+        self.y_true_list = []
+        self.y_pred_list = []
+
+    def on_batch_end(self, batch: MutableMapping[str, object], state: MutableMapping[str, object]) -> None:
+        y = batch[self.true_key]
+        y_pred = batch[self.pred_key]
+
+        # Convert to numpy for accumulation
+        if isinstance(y, mx.array):
+            y = y.tolist()
+        if isinstance(y_pred, mx.array):
+            y_pred = y_pred.tolist()
+
+        self.y_true_list.extend(y)
+        self.y_pred_list.extend(y_pred)
+
+    def _compute_binary_auc(self, y_true: List, y_scores: List) -> float:
+        """Compute AUC for binary classification using trapezoidal rule."""
+        # Sort by predicted scores descending
+        paired = sorted(zip(y_scores, y_true), reverse=True)
+
+        # Count positives and negatives
+        n_pos = sum(1 for _, y in paired if y == 1)
+        n_neg = len(paired) - n_pos
+
+        if n_pos == 0 or n_neg == 0:
+            return 0.5  # Undefined, return random baseline
+
+        # Compute AUC via Mann-Whitney U statistic
+        tp = 0
+        fp = 0
+        auc = 0.0
+        prev_score = float('inf')
+
+        for score, label in paired:
+            if score != prev_score:
+                prev_score = score
+            if label == 1:
+                tp += 1
+            else:
+                fp += 1
+                auc += tp
+
+        return auc / (n_pos * n_neg) if (n_pos * n_neg) > 0 else 0.5
+
+    def on_epoch_end(self, state: MutableMapping[str, object]) -> None:
+        import numpy as np
+
+        y_true = np.array(self.y_true_list)
+        y_pred = np.array(self.y_pred_list)
+
+        # Handle one-hot encoded labels
+        if y_true.ndim > 1 and y_true.shape[-1] > 1:
+            y_true_labels = np.argmax(y_true, axis=-1)
+            n_classes = y_true.shape[-1]
+        else:
+            y_true_labels = y_true.astype(int)
+            n_classes = int(np.max(y_true_labels)) + 1 if len(y_true_labels) > 0 else 2
+
+        # Binary classification
+        if n_classes == 2:
+            if y_pred.ndim > 1 and y_pred.shape[-1] == 2:
+                scores = y_pred[:, 1].tolist()
+            elif y_pred.ndim == 1:
+                scores = y_pred.tolist()
+            else:
+                scores = y_pred[:, 1].tolist() if y_pred.shape[-1] > 1 else y_pred.flatten().tolist()
+
+            auc = self._compute_binary_auc(y_true_labels.tolist(), scores)
+            state['metrics'][self.output_name] = auc
+            return
+
+        # Multi-class: one-vs-rest
+        if y_pred.ndim == 1:
+            # Can't compute multi-class AUC without class probabilities
+            state['metrics'][self.output_name] = 0.0
+            return
+
+        aucs = []
+        weights = []
+        for c in range(n_classes):
+            binary_true = (y_true_labels == c).astype(int).tolist()
+            scores = y_pred[:, c].tolist()
+
+            class_weight = sum(binary_true)
+            if class_weight > 0:  # Only compute if class exists
+                auc_c = self._compute_binary_auc(binary_true, scores)
+                aucs.append(auc_c)
+                weights.append(class_weight)
+
+        if not aucs:
+            state['metrics'][self.output_name] = 0.0
+            return
+
+        if self.average == "macro":
+            final_auc = sum(aucs) / len(aucs)
+        elif self.average == "weighted":
+            total_weight = sum(weights)
+            final_auc = sum(a * w for a, w in zip(aucs, weights)) / total_weight if total_weight > 0 else 0.0
+        else:
+            # Return per-class AUCs
+            final_auc = aucs
+
+        state['metrics'][self.output_name] = final_auc

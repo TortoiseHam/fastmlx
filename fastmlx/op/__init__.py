@@ -10,7 +10,7 @@ from .color_jitter import ColorJitter, ToGray
 
 # Loss Ops
 from .cross_entropy import CrossEntropy
-from .cutout import Cutout, GridMask, MixUp
+from .cutout import CutMix, Cutout, GridMask, MixUp
 from .dice_loss import DiceLoss
 from .elastic_transform import ElasticTransform, PerspectiveTransform, ShearTransform
 
@@ -45,6 +45,7 @@ from .resize import CenterCrop, RandomResizedCrop, Resize
 from .rotate import Rotate, Rotate90
 from .smooth_l1_loss import SmoothL1Loss
 from .sometimes import Sometimes
+from .super_loss import ConfidenceWeightedLoss, GradientWeightedLoss, SuperLoss
 from .update_op import UpdateOp
 from .vertical_flip import VerticalFlip
 
@@ -92,6 +93,7 @@ __all__ = [
     "Cutout",
     "GridMask",
     "MixUp",
+    "CutMix",
     "RandomErasing",
     "GridDropout",
     "ChannelDropout",
@@ -112,6 +114,9 @@ __all__ = [
     "ContrastiveLoss",
     "CenterLoss",
     "CosineSimilarityLoss",
+    "SuperLoss",
+    "ConfidenceWeightedLoss",
+    "GradientWeightedLoss",
     # Model operations
     "ModelOp",
     "UpdateOp",

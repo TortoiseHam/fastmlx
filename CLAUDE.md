@@ -90,18 +90,20 @@ uv run pytest tests/
 2. Inherit from `mlx.nn.Module`
 3. Export in `fastmlx/architecture/__init__.py`
 
-## What's Been Ported (as of v0.2.0)
+## What's Been Ported (as of v0.2.1)
 
 ### Ops
 - **Tensor**: Minmax, Normalize, Onehot, ExpandDims, Squeeze, etc.
-- **Loss**: CrossEntropy, MeanSquaredError, FocalLoss, DiceLoss, etc.
-- **Augmentation**: HorizontalFlip, VerticalFlip, Rotate, GaussianBlur, etc.
+- **Loss**: CrossEntropy, MeanSquaredError, FocalLoss, DiceLoss, SuperLoss, etc.
+- **Augmentation**: HorizontalFlip, VerticalFlip, Rotate, GaussianBlur, MixUp, CutMix, etc.
 - **Model**: ModelOp, UpdateOp
+- **Curriculum Learning**: SuperLoss, ConfidenceWeightedLoss, GradientWeightedLoss
 
 ### Traces
-- **Metric**: Accuracy, Precision, Recall, F1Score, ConfusionMatrix, Dice, MCC
+- **Metric**: Accuracy, Precision, Recall, F1Score, ConfusionMatrix, Dice, MCC, AUC
 - **Adapt**: EarlyStopping, ReduceLROnPlateau, TerminateOnNaN, WarmupScheduler
-- **IO**: BestModelSaver, ModelSaver, CSVLogger, ProgressLogger, Timer
+- **IO**: BestModelSaver, ModelSaver, CSVLogger, ProgressLogger, Timer, ImageSaver, ImageViewer
+- **XAI**: GradCAM, Saliency, IntegratedGradients (NEW)
 
 ### Architectures
 - **CNN**: LeNet, ResNet9, WideResNet variants, UNet, AttentionUNet
@@ -115,14 +117,30 @@ uv run pytest tests/
 
 ## What Still Needs Porting
 
-Priority items from FastEstimator:
-- [ ] More dataset types (SiameseDirDataset, etc.)
-- [ ] TensorBoard integration
-- [ ] Traceability reports
-- [ ] More augmentation ops (elastic transform, etc.)
+Priority items from FastEstimator (updated December 2024):
+
+### Completed in v0.2.1:
+- [x] SuperLoss (self-paced curriculum learning)
+- [x] CutMix augmentation
+- [x] AUC metric
+- [x] XAI traces (GradCAM, Saliency, IntegratedGradients)
+- [x] ImageSaver and ImageViewer traces
+
+### Remaining High Priority:
+- [ ] More metrics (BLEU Score, Mean Average Precision, CalibrationError)
+- [ ] SiameseDirDataset
+- [ ] RestoreWizard trace
+- [ ] Traceability/TestReport traces
+
+### Medium Priority:
+- [ ] More dataset types (NumpyDataset, PickleDataset)
+- [ ] Advanced augmentation (CLAHE, weather effects, etc.)
+- [ ] Advanced geometric transforms (Affine, GridDistortion, OpticalDistortion)
+
+### Lower Priority:
 - [ ] Distributed training support
-- [ ] More loss functions (SuperLoss, etc.)
-- [ ] Image/batch visualization improvements
+- [ ] TensorBoard embedding projector
+- [ ] BBox-aware augmentation ops
 
 ## Development Commands
 

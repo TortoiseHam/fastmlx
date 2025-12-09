@@ -220,3 +220,89 @@ class MixUp(Op):
         mixed_y = lam * y + (1 - lam) * y[indices]
 
         return mx.array(mixed_x), mx.array(mixed_y)
+
+
+class CutMix(Op):
+    """Apply CutMix augmentation between batch samples.
+
+    Cuts a rectangular region from one image and pastes it onto another,
+    while mixing labels proportionally to the patch area.
+
+    Note: This op works on batches and mixes samples within the batch.
+    Should be applied after batching.
+
+    Args:
+        inputs: Tuple of (image_key, label_key).
+        outputs: Tuple of (mixed_image_key, mixed_label_key).
+        alpha: Beta distribution parameter for mixing coefficient.
+        prob: Probability of applying CutMix.
+
+    Reference:
+        Yun et al., "CutMix: Regularization Strategy to Train Strong Classifiers
+        with Localizable Features", ICCV 2019.
+
+    Example:
+        >>> CutMix(inputs=("x", "y"), outputs=("x", "y"), alpha=1.0)
+    """
+
+    def __init__(
+        self,
+        inputs: Tuple[str, str],
+        outputs: Tuple[str, str],
+        alpha: float = 1.0,
+        prob: float = 0.5
+    ) -> None:
+        super().__init__(inputs, outputs)
+        self.alpha = alpha
+        self.prob = prob
+
+    def _get_rand_bbox(self, h: int, w: int, lam: float) -> Tuple[int, int, int, int]:
+        """Get random bounding box coordinates for the cut region."""
+        # Compute cut ratio from lambda
+        cut_ratio = np.sqrt(1.0 - lam)
+        cut_h = int(h * cut_ratio)
+        cut_w = int(w * cut_ratio)
+
+        # Random center point
+        cy = np.random.randint(h)
+        cx = np.random.randint(w)
+
+        # Bounding box coordinates
+        y1 = np.clip(cy - cut_h // 2, 0, h)
+        y2 = np.clip(cy + cut_h // 2, 0, h)
+        x1 = np.clip(cx - cut_w // 2, 0, w)
+        x2 = np.clip(cx + cut_w // 2, 0, w)
+
+        return int(y1), int(y2), int(x1), int(x2)
+
+    def forward(self, data: Tuple[mx.array, mx.array], state: MutableMapping[str, Any]) -> Tuple[mx.array, mx.array]:
+        if np.random.rand() >= self.prob:
+            return data
+
+        x, y = data
+        x = np.array(x).astype(np.float32)
+        y = np.array(y).astype(np.float32)
+
+        batch_size = x.shape[0]
+        h, w = x.shape[1], x.shape[2]
+
+        # Sample mixing coefficient from beta distribution
+        lam = np.random.beta(self.alpha, self.alpha)
+
+        # Random permutation to get pairs
+        indices = np.random.permutation(batch_size)
+
+        # Get random bounding box
+        y1, y2, x1, x2 = self._get_rand_bbox(h, w, lam)
+
+        # Copy x and apply cutmix
+        mixed_x = x.copy()
+        mixed_x[:, y1:y2, x1:x2, :] = x[indices, y1:y2, x1:x2, :]
+
+        # Compute actual lambda based on actual cut area
+        actual_lam = 1.0 - ((y2 - y1) * (x2 - x1)) / (h * w)
+
+        # Mix labels proportionally
+        mixed_y = actual_lam * y + (1.0 - actual_lam) * y[indices]
+
+        return mx.array(mixed_x), mx.array(mixed_y)

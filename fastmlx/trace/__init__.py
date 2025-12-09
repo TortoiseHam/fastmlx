@@ -14,6 +14,8 @@ from .base import Trace
 from .io import (
     BestModelSaver,
     CSVLogger,
+    ImageSaver,
+    ImageViewer,
     ModelSaver,
     ProgressLogger,
     Timer,
@@ -22,6 +24,7 @@ from .io import (
 # Metric traces
 from .metric import (
     MCC,
+    AUC,
     Accuracy,
     ConfusionMatrix,
     Dice,
@@ -29,6 +32,13 @@ from .metric import (
     LossMonitor,
     Precision,
     Recall,
+)
+
+# XAI traces
+from .xai import (
+    GradCAM,
+    IntegratedGradients,
+    Saliency,
 )
 
 # TensorBoard traces (optional dependency)
@@ -43,6 +53,7 @@ __all__ = [
     "Trace",
     # Metrics
     "Accuracy",
+    "AUC",
     "LossMonitor",
     "Precision",
     "Recall",
@@ -56,12 +67,18 @@ __all__ = [
     "CSVLogger",
     "ProgressLogger",
     "Timer",
+    "ImageSaver",
+    "ImageViewer",
     # Adapt
     "LRScheduler",
     "EarlyStopping",
     "ReduceLROnPlateau",
     "TerminateOnNaN",
     "WarmupScheduler",
+    # XAI
+    "GradCAM",
+    "Saliency",
+    "IntegratedGradients",
 ]
 
 # Add TensorBoard traces if available
